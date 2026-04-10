@@ -15,8 +15,8 @@ class UserProjectController extends Controller
         $user = Auth::user();
         $roles = (array) ($user->role ?? []);
 
-        if (in_array('admin', $roles) || in_array('superadmin', $roles)) {
-            // Admins and Superadmins see EVERYTHING.
+        if (in_array('admin', $roles) || in_array('superadmin', $roles) || in_array('supervisor', $roles)) {
+            // Admins, Superadmins, and Supervisors see EVERYTHING.
             $projects = UserProject::with('building')->get();
         } else {
             // Filter based on specific roles
@@ -51,7 +51,7 @@ class UserProjectController extends Controller
         $user = Auth::user();
         $roles = (array) ($user->role ?? []);
 
-        $canCreate = in_array('admin', $roles) || in_array('superadmin', $roles) || in_array('facilitator', $roles);
+        $canCreate = in_array('admin', $roles) || in_array('superadmin', $roles) || in_array('supervisor', $roles) || in_array('facilitator', $roles);
         
         if (!$canCreate) {
             return response()->json(['message' => 'Your account role is not authorized to create projects.'], 403);

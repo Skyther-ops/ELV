@@ -12,7 +12,8 @@ class IncidentReport extends Model
         'incident_location', 'finding_date', 'incident_scenario',
         'incident_description', 'specifications', 'inability', 'impact',
         'operation', 'recommendations', 'replacement_capability', 'remarks',
-        'verified_by', 'verified_designation', 'verified_date'
+        'verified_by', 'verified_designation', 'verified_date',
+        'linked_service_report_id'
     ];
 
     protected $casts = [
@@ -30,5 +31,31 @@ class IncidentReport extends Model
     public function photos()
     {
         return $this->morphMany(ReportPhoto::class, 'reportable');
+    }
+
+    public function linkedServiceReport()
+    {
+        return $this->belongsTo(ServiceReport::class, 'linked_service_report_id');
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($model) {
+            if ($model->isDirty('linked_service_report_id')) {
+                $originalId = $model->getOriginal('linked_service_report_id');
+                if ($originalId) {
+                    ServiceReport::where('id', $originalId)->update(['linked_incident_report_id' => null]);
+                }
+                if ($model->linked_service_report_id) {
+                    ServiceReport::where('id', $model->linked_service_report_id)->update(['linked_incident_report_id' => $model->id]);
+                }
+            }
+        });
+
+        static::deleted(function ($model) {
+            if ($model->linked_service_report_id) {
+                ServiceReport::where('id', $model->linked_service_report_id)->update(['linked_incident_report_id' => null]);
+            }
+        });
     }
 }

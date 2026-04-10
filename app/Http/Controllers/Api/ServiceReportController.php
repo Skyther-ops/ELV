@@ -13,7 +13,7 @@ class ServiceReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ServiceReport::with('photos');
+        $query = ServiceReport::with(['photos', 'incidentReport', 'inspectionReport']);
         if ($request->has('project_id')) {
             $query->where('project_id', $request->project_id);
         }
@@ -38,13 +38,29 @@ class ServiceReportController extends Controller
             'summary_time' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*' => 'image|max:10240',
+            'linked_incident_report_id' => 'nullable|exists:incident_reports,id',
+            'linked_inspection_report_id' => 'nullable|exists:inspection_reports,id',
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
-            // Generate SR NO: R109/2026
+            // Generate SR NO: R109/2026 — use MAX to avoid gaps/duplicates from deletions
             $year = date('Y', strtotime($validated['date_time']));
-            $count = ServiceReport::whereYear('created_at', $year)->count() + 1;
-            $validated['service_report_no'] = "R" . str_pad($count, 3, '0', STR_PAD_LEFT) . "/{$year}";
+            $suffix = "/{$year}";
+
+            // Find the highest sequence number already used for this year
+            $lastNo = ServiceReport::where('service_report_no', 'like', 'R%' . $suffix)
+                
+                ->orderBy('service_report_no', 'desc')
+                ->value('service_report_no'); // e.g. "R003/2026"
+
+            $nextSeq = 1;
+            if ($lastNo) {
+                // Extract the numeric part from e.g. "R003/2026" → 3
+                $numPart = substr($lastNo, 1, strpos($lastNo, '/') - 1);
+                $nextSeq = ((int) $numPart) + 1;
+            }
+
+            $validated['service_report_no'] = 'R' . str_pad($nextSeq, 3, '0', STR_PAD_LEFT) . $suffix;
 
             $serviceReport = ServiceReport::create($validated);
 
@@ -58,13 +74,13 @@ class ServiceReportController extends Controller
                 }
             }
 
-            return response()->json($serviceReport->load('photos'), 201);
+            return response()->json($serviceReport->load(['photos', 'incidentReport', 'inspectionReport']), 201);
         });
     }
 
     public function show($id)
     {
-        return response()->json(ServiceReport::with('photos')->findOrFail($id));
+        return response()->json(ServiceReport::with(['photos', 'incidentReport', 'inspectionReport'])->findOrFail($id));
     }
 
     public function update(Request $request, $id)
@@ -85,6 +101,8 @@ class ServiceReportController extends Controller
             'summary_time' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*' => 'image|max:10240',
+            'linked_incident_report_id' => 'nullable|exists:incident_reports,id',
+            'linked_inspection_report_id' => 'nullable|exists:inspection_reports,id',
         ]);
 
         return DB::transaction(function () use ($serviceReport, $validated, $request) {
@@ -100,7 +118,7 @@ class ServiceReportController extends Controller
                 }
             }
 
-            return response()->json($serviceReport->load('photos'));
+            return response()->json($serviceReport->load(['photos', 'incidentReport', 'inspectionReport']));
         });
     }
 

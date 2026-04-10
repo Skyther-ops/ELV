@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    image: bitnami/laravel:11
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - DB_CONNECTION=sqlite
+      - DB_DATABASE=/app/database/database.sqlite
+      - APP_DEBUG=true
+    networks:
+      - elv-network
+
+networks:
+  elv-network:
+    driver: bridge

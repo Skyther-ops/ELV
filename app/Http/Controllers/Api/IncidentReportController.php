@@ -13,7 +13,7 @@ class IncidentReportController extends Controller
 {
     public function index(Request $request)
     {
-        $query = IncidentReport::with('photos');
+        $query = IncidentReport::with(['photos', 'linkedServiceReport']);
         if ($request->has('project_id')) {
             $query->where('project_id', $request->project_id);
         }
@@ -46,13 +46,27 @@ class IncidentReportController extends Controller
             'verified_date' => 'nullable|date',
             'photos' => 'nullable|array',
             'photos.*' => 'image|max:10240', // 10MB per photo
+            'linked_service_report_id' => 'nullable|exists:service_reports,id',
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
-            // Generate IR NO: KMSB/IR/2026/0001
+            // Lock the table to prevent duplicate IR numbers under concurrent requests
             $year = date('Y', strtotime($validated['report_date']));
-            $count = IncidentReport::whereYear('report_date', $year)->count() + 1;
-            $validated['ir_no'] = "KMSB/IR/{$year}/" . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $prefix = "KMSB/IR/{$year}/";
+
+            // Find the highest sequence number already used for this year
+            $lastNo = IncidentReport::where('ir_no', 'like', $prefix . '%')
+                
+                ->orderBy('ir_no', 'desc')
+                ->value('ir_no'); // e.g. "KMSB/IR/2026/0003"
+
+            $nextSeq = 1;
+            if ($lastNo) {
+                $lastSeq = (int) substr($lastNo, strlen($prefix));
+                $nextSeq = $lastSeq + 1;
+            }
+
+            $validated['ir_no'] = $prefix . str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
 
             $incident = IncidentReport::create($validated);
 
@@ -66,13 +80,13 @@ class IncidentReportController extends Controller
                 }
             }
 
-            return response()->json($incident->load('photos'), 201);
+            return response()->json($incident->load(['photos', 'linkedServiceReport']), 201);
         });
     }
 
     public function show($id)
     {
-        return response()->json(IncidentReport::with('photos')->findOrFail($id));
+        return response()->json(IncidentReport::with(['photos', 'linkedServiceReport'])->findOrFail($id));
     }
 
     public function update(Request $request, $id)
@@ -101,6 +115,7 @@ class IncidentReportController extends Controller
             'verified_date' => 'nullable|date',
             'photos' => 'nullable|array',
             'photos.*' => 'image|max:10240',
+            'linked_service_report_id' => 'nullable|exists:service_reports,id',
         ]);
 
         return DB::transaction(function () use ($incident, $validated, $request) {
@@ -116,7 +131,7 @@ class IncidentReportController extends Controller
                 }
             }
 
-            return response()->json($incident->load('photos'));
+            return response()->json($incident->load(['photos', 'linkedServiceReport']));
         });
     }
 

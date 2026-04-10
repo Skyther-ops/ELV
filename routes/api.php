@@ -152,6 +152,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Attendance Records
         Route::apiResource('attendance', \App\Http\Controllers\Api\AttendanceController::class);
+        Route::post('/attendance/personal-remark', [\App\Http\Controllers\Api\AttendanceController::class, 'upsertPersonalRemark']);
 
         // Scheduling
         Route::apiResource('schedules', \App\Http\Controllers\Api\ScheduleController::class);
@@ -171,6 +172,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/technical-layout-zones/{id}/status', [TechnicalLayoutController::class, 'updateZoneStatus']);
         Route::delete('/technical-layout-zones/{id}', [TechnicalLayoutController::class, 'deleteZone']);
 
+        // Technical Layout Widgets (Environmental Sensors)
+        Route::apiResource('technical-layout-widgets', \App\Http\Controllers\Api\TechnicalLayoutWidgetController::class);
+
         // Facilitator Modules
         Route::apiResource('ssdc-passwords', \App\Http\Controllers\Api\SsdcPasswordController::class);
         Route::apiResource('maintenance-tasks', \App\Http\Controllers\Api\MaintenanceTaskController::class);
@@ -180,6 +184,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('daily-checklists', \App\Http\Controllers\Api\DailyChecklistController::class);
         Route::apiResource('maintenance-reports', \App\Http\Controllers\Api\MaintenanceReportController::class);
         Route::apiResource('service-reports', \App\Http\Controllers\Api\ServiceReportController::class);
+        Route::apiResource('pdu-checklists', \App\Http\Controllers\Api\PduChecklistController::class);
         Route::apiResource('risk-assessments', \App\Http\Controllers\RiskAssessmentController::class);
         
         // Custom Report Routes

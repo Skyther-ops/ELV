@@ -14,7 +14,7 @@ class InspectionReportController extends Controller
     {
         $project_id = $request->header('X-Project-Id');
         
-        $query = InspectionReport::with(['assignedToUser', 'createdBy'])
+        $query = InspectionReport::with(['assignedToUser', 'createdBy', 'linkedServiceReport'])
             ->where('project_id', $project_id);
 
         if ($request->has('start_date')) {
@@ -47,6 +47,7 @@ class InspectionReportController extends Controller
             'inspection_date' => 'required|date',
             'status' => 'required|in:pending,approve,approve with comment,rejected,standby,completed,failed',
             'file' => 'required|file|mimes:pdf|max:10240', // Max 10MB
+            'linked_service_report_id' => 'nullable|exists:service_reports,id',
         ]);
 
         $filePath = null;
@@ -68,14 +69,15 @@ class InspectionReportController extends Controller
             'file_path' => $filePath,
             'status' => $validated['status'],
             'inspection_date' => $validated['inspection_date'],
+            'linked_service_report_id' => $validated['linked_service_report_id'] ?? null,
         ]);
 
-        return response()->json($report->load(['assignedToUser', 'createdBy']), 201);
+        return response()->json($report->load(['assignedToUser', 'createdBy', 'linkedServiceReport']), 201);
     }
 
     public function show(InspectionReport $inspectionReport)
     {
-        return response()->json($inspectionReport->load(['assignedToUser', 'createdBy', 'project']));
+        return response()->json($inspectionReport->load(['assignedToUser', 'createdBy', 'project', 'linkedServiceReport']));
     }
 
     public function update(Request $request, InspectionReport $inspectionReport)
@@ -92,6 +94,7 @@ class InspectionReportController extends Controller
             'inspection_date' => 'date',
             'status' => 'in:pending,approve,approve with comment,rejected,standby,completed,failed',
             'file' => 'nullable|file|mimes:pdf|max:10240',
+            'linked_service_report_id' => 'nullable|exists:service_reports,id',
         ]);
 
         if ($request->hasFile('file')) {
@@ -104,7 +107,7 @@ class InspectionReportController extends Controller
 
         $inspectionReport->update($validated);
 
-        return response()->json($inspectionReport->load(['assignedToUser', 'createdBy']));
+        return response()->json($inspectionReport->load(['assignedToUser', 'createdBy', 'linkedServiceReport']));
     }
 
     public function destroy(InspectionReport $inspectionReport)

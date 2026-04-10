@@ -20,6 +20,7 @@ class InspectionReport extends Model
         'file_path',
         'status',
         'inspection_date',
+        'linked_service_report_id',
     ];
 
     public function assignedToUser()
@@ -35,5 +36,31 @@ class InspectionReport extends Model
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function linkedServiceReport()
+    {
+        return $this->belongsTo(ServiceReport::class, 'linked_service_report_id');
+    }
+
+    protected static function booted()
+    {
+        static::saved(function ($model) {
+            if ($model->isDirty('linked_service_report_id')) {
+                $originalId = $model->getOriginal('linked_service_report_id');
+                if ($originalId) {
+                    ServiceReport::where('id', $originalId)->update(['linked_inspection_report_id' => null]);
+                }
+                if ($model->linked_service_report_id) {
+                    ServiceReport::where('id', $model->linked_service_report_id)->update(['linked_inspection_report_id' => $model->id]);
+                }
+            }
+        });
+
+        static::deleted(function ($model) {
+            if ($model->linked_service_report_id) {
+                ServiceReport::where('id', $model->linked_service_report_id)->update(['linked_inspection_report_id' => null]);
+            }
+        });
     }
 }
