@@ -36,7 +36,12 @@ const FacilitatorDashboard: FC = () => {
         { id: 'daily-checklist', label: 'Facility Daily Checklist', icon: 'heroicons-outline:clipboard-document-check', color: 'from-emerald-600 to-teal-700', url: '/daily-checklist' },
         { id: 'pdu-checklist', label: 'PDU Checklist', icon: 'heroicons-outline:bolt', color: 'from-indigo-600 to-blue-700', url: '/pdu-checklist' },
         { id: 'technical-layout', label: 'Technical Layout', icon: 'heroicons-outline:map', color: 'from-amber-400 to-orange-500', url: '/technical-layout' },
-    ];
+    ].filter(module => {
+        if (module.id === 'technical-layout' && user?.role !== 'supervisor') {
+            return false;
+        }
+        return true;
+    });
 
     const recentActivities = [
         { id: 1, type: 'report', user: 'Azmil', action: 'submitted a new Onsite Report', target: 'Project Alpha', time: '10 mins ago', icon: 'heroicons-outline:document-text' },
