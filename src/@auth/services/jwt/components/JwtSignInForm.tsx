@@ -70,7 +70,13 @@ function JwtSignInForm({ restrictedRole }: JwtSignInFormProps) {
                         ? session.user.role 
                         : [session.user.role?.toString().toLowerCase()];
                     
-                    const hasRequiredRole = userRoles.some(r => r?.toLowerCase() === restrictedRole.toLowerCase() || r?.toLowerCase() === 'admin');
+                    // superadmin and admin can log in through any role-specific page
+                    const isSuperUser = userRoles.some(r => 
+                        r?.toLowerCase() === 'admin' || r?.toLowerCase() === 'superadmin'
+                    );
+                    const hasRequiredRole = isSuperUser || userRoles.some(r => 
+                        r?.toLowerCase() === restrictedRole.toLowerCase()
+                    );
 
                     if (!hasRequiredRole) {
                         signOut();

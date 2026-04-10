@@ -5,17 +5,17 @@ const authRoles = {
 	/**
 	 * supervisor: full access to all features
 	 */
-	supervisor: ['supervisor'],
+	supervisor: ['supervisor', 'superadmin'],
 
 	/**
 	 * anyStaff: both supervisor and member can access (ELV side)
 	 */
-	anyStaff: ['supervisor', 'member'],
+	anyStaff: ['supervisor', 'superadmin', 'member'],
 
 	/**
 	 * facilitator: both supervisor and facilitator can access (SSDC side)
 	 */
-	facilitator: ['supervisor', 'facilitator'],
+	facilitator: ['supervisor', 'superadmin', 'facilitator'],
 
 	/**
 	 * onlyGuest role grants access to unauthenticated users only.

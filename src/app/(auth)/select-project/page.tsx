@@ -265,11 +265,42 @@ export default function SelectProjectPage() {
     },
   });
 
+  // Check if user has supervisor/admin level access
   const isSupervisor = Array.isArray(user?.role)
-    ? user?.role.includes("supervisor")
-    : user?.role === "supervisor";
+    ? user?.role.some(r => ['supervisor', 'superadmin', 'admin'].includes(r?.toLowerCase?.() || r))
+    : ['supervisor', 'superadmin', 'admin'].includes((user?.role as string)?.toLowerCase?.());
+
+  const isFacilitator = Array.isArray(user?.role)
+    ? user?.role.some(r => ['facilitator'].includes(r?.toLowerCase?.() || r))
+    : ['facilitator'].includes((user?.role as string)?.toLowerCase?.());
+
+  const isMember = Array.isArray(user?.role)
+    ? user?.role.some(r => ['member'].includes(r?.toLowerCase?.() || r))
+    : ['member'].includes((user?.role as string)?.toLowerCase?.());
+
+  const showViewModeToggle = isSupervisor || (isFacilitator && isMember);
 
   const { viewMode, setViewMode } = useProject();
+
+  useEffect(() => {
+    if (!showViewModeToggle) {
+        if (isFacilitator) setViewMode('ssdc' as any);
+        else if (isMember) setViewMode('construction' as any);
+    }
+  }, [showViewModeToggle, isFacilitator, isMember, setViewMode]);
+
+  const handleSetViewMode = (mode: any) => {
+      setViewMode(mode);
+  };
+
+  // Filter projects based on the current view mode
+  // In a real system, projects would have an is_facilitator_only flag.
+  // Here we use a heuristic: if SSDC mode, show all (API already handles it).
+  // The user can click to ENTER any project in either mode.
+  const filteredProjects = useMemo(() => {
+    if (!projects) return [];
+    return projects;
+  }, [projects]);
 
   const handleEnterWorkspace = (id: number) => {
     const project = projects?.find(p => p.id === id);
@@ -279,17 +310,11 @@ export default function SelectProjectPage() {
         setActiveProjectId(id);
     }
     
-    // Always direct facilitators to SSDC Ops by default, but allow Supervisors/Members to choose via slider
-    if (user?.role === 'facilitator') {
-       navigate("/facilitator");
-       return;
-    }
-
-    // Rely on the slider choice for others (and facilitators if they use the toggle)
+    // Navigate based on view mode selection
     if (viewMode === 'ssdc') {
       navigate("/facilitator");
     } else {
-      navigate("/building-progress");
+      navigate("/on-site-dashboard");
     }
   };
 
@@ -334,39 +359,41 @@ export default function SelectProjectPage() {
               Select Workspace
             </Typography>
 
-            <div className="mb-4">
-              <ToggleButtonGroup
-                color="primary"
-                value={viewMode}
-                exclusive
-                onChange={(e, mode) => mode !== null && setViewMode(mode)}
-                aria-label="View Mode"
-                size="small"
-                sx={{
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '8px',
-                  padding: '4px',
-                  '.MuiToggleButton-root': {
-                    border: 'none',
-                    color: '#94a3b8',
-                    fontWeight: 'bold',
-                    textTransform: 'none',
-                    padding: '6px 16px',
-                    borderRadius: '6px !important',
-                    lineHeight: 1.2,
-                    '&.Mui-selected': {
-                      backgroundColor: '#3b82f6',
-                      color: 'white',
-                      boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
-                      pointerEvents: 'none'
-                    }
-                  }
-                }}
-              >
-                <ToggleButton value="construction">Construction</ToggleButton>
-                <ToggleButton value="ssdc">SSDC Operations</ToggleButton>
-              </ToggleButtonGroup>
-            </div>
+            {showViewModeToggle && (
+                <div className="mb-4">
+                  <ToggleButtonGroup
+                    color="primary"
+                    value={viewMode}
+                    exclusive
+                    onChange={(e, mode) => mode !== null && handleSetViewMode(mode)}
+                    aria-label="View Mode"
+                    size="small"
+                    sx={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: '8px',
+                      padding: '4px',
+                      '.MuiToggleButton-root': {
+                        border: 'none',
+                        color: '#94a3b8',
+                        fontWeight: 'bold',
+                        textTransform: 'none',
+                        padding: '6px 16px',
+                        borderRadius: '6px !important',
+                        lineHeight: 1.2,
+                        '&.Mui-selected': {
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
+                          pointerEvents: 'none'
+                        }
+                      }
+                    }}
+                  >
+                    <ToggleButton value="construction">Construction</ToggleButton>
+                    <ToggleButton value="ssdc">SSDC Operations</ToggleButton>
+                  </ToggleButtonGroup>
+                </div>
+            )}
 
             <div className="flex items-center gap-3">
               <Typography variant="caption" className="text-slate-400 font-bold uppercase tracking-widest">

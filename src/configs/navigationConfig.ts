@@ -17,7 +17,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Inventory',
 		type: 'group',
 		icon: 'heroicons-outline:archive',
-		auth: ['supervisor', 'member', 'facilitator'],
+		auth: ['supervisor', 'superadmin', 'admin', 'member', 'facilitator'],
 		children: [
 			{
 				id: 'material-inventory',
@@ -40,7 +40,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Building Management',
 		type: 'group',
 		icon: 'heroicons-outline:building-office',
-		auth: ['supervisor', 'member', 'facilitator'],
+		auth: ['supervisor', 'superadmin', 'admin', 'member'],
 		children: [
 			{
 				id: 'on-site-dashboard',
@@ -71,6 +71,13 @@ const navigationConfig: FuseNavItemType[] = [
 				url: 'wiring-topology'
 			},
 			{
+				id: 'technical-layout',
+				title: 'Technical Layout',
+				type: 'item',
+				icon: 'heroicons-outline:cpu-chip',
+				url: 'technical-layout'
+			},
+			{
 				id: 'bill-of-quantity',
 				title: 'Bill of Quantity (BoQ)',
 				type: 'item',
@@ -84,7 +91,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Scheduling',
 		type: 'group',
 		icon: 'heroicons-outline:calendar',
-		auth: ['supervisor', 'member', 'facilitator'],
+		auth: ['supervisor', 'superadmin', 'admin', 'member', 'facilitator'],
 		children: [
 			{
 				id: 'schedules',
@@ -100,7 +107,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'SSDC Operations',
 		type: 'group',
 		icon: 'heroicons-outline:command-line',
-		auth: ['supervisor', 'member', 'facilitator'],
+		auth: ['supervisor', 'superadmin', 'admin', 'facilitator'],
 		children: [
 			{
 				id: 'facilitator-dashboard',
@@ -171,6 +178,13 @@ const navigationConfig: FuseNavItemType[] = [
 						type: 'item',
 						icon: 'heroicons-outline:clipboard-document-check',
 						url: 'daily-checklist'
+					},
+					{
+						id: 'pdu-checklist',
+						title: 'PDU Daily Checklist',
+						type: 'item',
+						icon: 'heroicons-outline:bolt',
+						url: 'pdu-checklist'
 					}
 				]
 			},
@@ -218,6 +232,13 @@ const navigationConfig: FuseNavItemType[] = [
 				url: 'pending-history'
 			},
 			{
+				id: 'facilitator-technical-layout',
+				title: 'Technical Layout',
+				type: 'item',
+				icon: 'heroicons-outline:map',
+				url: 'technical-layout'
+			},
+			{
 				id: 'safety-dashboard',
 				title: 'Safety Dashboard',
 				type: 'item',
@@ -231,7 +252,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Management',
 		type: 'group',
 		icon: 'heroicons-outline:cog',
-		auth: ['supervisor'],
+		auth: ['supervisor', 'superadmin', 'admin'],
 		children: [
 			{
 				id: 'user-management',

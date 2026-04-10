@@ -50,6 +50,7 @@ function FuseAuthorization({
       "/sign-out",
       "/logout",
       "/404",
+      "/401",
       "/select-project",
     ];
 

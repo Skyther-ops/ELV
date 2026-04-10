@@ -108,19 +108,40 @@ function JwtAuthProvider(props: FuseAuthProviderComponentProps) {
 					console.log('JwtAuthProvider: Updating state to authenticated');
 					return newState;
 				});
-			} catch (error) {
-				console.error('Auto login failed:', error);
-				removeTokenStorageValue();
-				removeGlobalHeaders(['Authorization']);
-				setAuthState((current) => {
-					const newState: FuseAuthProviderState<User> = {
-						authStatus: 'unauthenticated',
-						isAuthenticated: false,
-						user: null
-					};
-					if (_.isEqual(current, newState)) return current;
-					return newState;
-				});
+			} catch (error: any) {
+				// Only clear the token on a genuine 401 (bad/expired token).
+				// If the backend is simply down (network error / 500), keep the
+				// token so auto-login succeeds as soon as the server recovers.
+				const status = error?.response?.status;
+				const isAuthFailure = status === 401 || status === 403;
+
+				if (isAuthFailure) {
+					console.warn('Auto login failed: token rejected by server. Clearing token.');
+					removeTokenStorageValue();
+					removeGlobalHeaders(['Authorization']);
+					setAuthState((current) => {
+						const newState: FuseAuthProviderState<User> = {
+							authStatus: 'unauthenticated',
+							isAuthenticated: false,
+							user: null
+						};
+						if (_.isEqual(current, newState)) return current;
+						return newState;
+					});
+				} else {
+					// Network / server error — stay in 'unauthenticated' but
+					// keep the token so we can retry when the backend is back.
+					console.warn('Auto login failed: server unavailable. Token preserved for retry.', error);
+					setAuthState((current) => {
+						const newState: FuseAuthProviderState<User> = {
+							authStatus: 'unauthenticated',
+							isAuthenticated: false,
+							user: null
+						};
+						if (_.isEqual(current, newState)) return current;
+						return newState;
+					});
+				}
 			}
 		};
 
@@ -283,7 +304,9 @@ function JwtAuthProvider(props: FuseAuthProviderComponentProps) {
 	}));
 
 	/**
-	 * Intercept fetch requests to refresh the access token
+	 * Intercept fetch requests to refresh the access token.
+	 * IMPORTANT: Only sign out if the /api/user endpoint returns 401 (token invalid).
+	 * Do NOT sign out on other 401s like chat or message endpoints.
 	 */
 	const interceptFetch = useCallback(() => {
 		const { fetch: originalFetch } = window;
@@ -299,18 +322,18 @@ function JwtAuthProvider(props: FuseAuthProviderComponentProps) {
 					setTokenStorageValue(newAccessToken);
 				}
 
-				if (response.status === 401) {
+				// Only sign out if the token validation endpoint itself returns 401
+				// Not for other API endpoints (chat, messages, etc.) which may have
+				// their own access control independent of login status
+				const url = typeof resource === 'string' ? resource : resource instanceof URL ? resource.href : resource.url;
+				const isAuthEndpoint = url && (url.includes('/api/user') && !url.includes('/api/users'));
+				if (response.status === 401 && isAuthEndpoint) {
 					signOut();
-					console.error('Unauthorized request. User was signed out.');
+					console.error('Auth token invalid. User was signed out.');
 				}
 
 				return response;
 			} catch (error) {
-				if (error instanceof HTTPError && error.response.status === 401) {
-					signOut();
-					console.error('Unauthorized request. User was signed out.');
-				}
-
 				throw error;
 			}
 		};
