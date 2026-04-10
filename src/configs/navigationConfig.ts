@@ -75,7 +75,8 @@ const navigationConfig: FuseNavItemType[] = [
 				title: 'Technical Layout',
 				type: 'item',
 				icon: 'heroicons-outline:cpu-chip',
-				url: 'technical-layout'
+				url: 'technical-layout',
+				auth: ['supervisor', 'superadmin', 'admin']
 			},
 			{
 				id: 'bill-of-quantity',
