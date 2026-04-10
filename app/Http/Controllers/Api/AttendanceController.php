@@ -23,7 +23,7 @@ class AttendanceController extends Controller
             $query->where('user_id', $userId);
         }
         if ($month) {
-            $query->whereRaw("TO_CHAR(date, 'YYYY-MM') = ?", [$month]);
+            $query->whereRaw("DATE_FORMAT(date, '%Y-%m') = ?", [$month]);
         }
 
         return response()->json($query->orderBy('date')->get());
