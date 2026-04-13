@@ -84,6 +84,10 @@ export async function authUpdateUserStatus(id: string, data: { isBlocked?: boole
     return api.put(`users/${id}`, { json: data }).json();
 }
 
+export async function authDeleteUser(id: string): Promise<{ message: string }> {
+    return api.delete(`users/${id}`).json();
+}
+
 export async function authRefreshToken(): Promise<Response> {
     return api.post(`refresh`);
 }
