@@ -34,6 +34,7 @@ class ProjectController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:projects',
             'description' => 'nullable|string',
+            'type' => 'nullable|in:ssdc,construction',
             'building.name' => 'nullable|string|max:255',
             'building.total_floor' => 'nullable|integer|min:1',
             'building.latitude' => 'nullable|string',
@@ -43,6 +44,7 @@ class ProjectController extends Controller
         $project = Project::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
+            'type' => $validated['type'] ?? 'construction',
         ]);
 
         $building = null;

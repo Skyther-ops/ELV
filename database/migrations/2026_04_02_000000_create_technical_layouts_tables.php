@@ -31,7 +31,9 @@ return new class extends Migration
 
         Schema::create('technical_layout_zone_objects', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('technical_layout_zone_id')->constrained()->onDelete('cascade');
+            $table->foreignId('technical_layout_zone_id')
+                ->constrained('technical_layout_zones', 'id', 'tlz_obj_tlz_id_fk')
+                ->onDelete('cascade');
             $table->string('name');
             $table->text('description')->nullable();
             $table->timestamps();
@@ -39,7 +41,9 @@ return new class extends Migration
 
         Schema::create('technical_layout_zone_annotations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('technical_layout_zone_id')->constrained()->onDelete('cascade');
+            $table->foreignId('technical_layout_zone_id')
+                ->constrained('technical_layout_zones', 'id', 'tlz_ann_tlz_id_fk')
+                ->onDelete('cascade');
             $table->string('title');
             $table->text('description')->nullable();
             $table->string('status')->default('open');

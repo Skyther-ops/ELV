@@ -48,7 +48,7 @@ class UserController extends Controller
     }
 
     /**
-     * Update user (Blocking toggle)
+     * Update user (Blocking toggle / role change)
      */
     public function update(Request $request, $id)
     {
@@ -68,6 +68,27 @@ class UserController extends Controller
             'message' => 'User updated successfully',
             'user' => $this->formatUser($user)
         ]);
+    }
+
+    /**
+     * Delete user (Supervisor only)
+     */
+    public function destroy(Request $request, $id)
+    {
+        $requester = $request->user();
+        if ($requester->role !== 'supervisor') {
+            return response()->json(['message' => 'Unauthorized. Only supervisors can delete users.'], 403);
+        }
+
+        if ((string) $requester->id === (string) $id) {
+            return response()->json(['message' => 'You cannot delete your own account.'], 422);
+        }
+
+        $user = User::findOrFail($id);
+        $user->tokens()->delete();
+        $user->delete();
+
+        return response()->json(['message' => 'User deleted successfully']);
     }
 
     /**
