@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/utils/api';
+import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
 
 export interface ChatMessage {
     id: number;
@@ -24,6 +25,7 @@ export interface ChatUser {
 }
 
 export const useChatMessages = (receiverId?: number | null) => {
+    const { authState } = useAuth();
     return useQuery<ChatMessage[]>({
         queryKey: ['chat-messages', receiverId],
         queryFn: async () => {
@@ -32,6 +34,7 @@ export const useChatMessages = (receiverId?: number | null) => {
             return api.get('messages', { searchParams: params }).json();
         },
         refetchInterval: 3000, // Near real-time polling every 3 seconds
+        enabled: authState.isAuthenticated,
     });
 };
 
@@ -48,11 +51,13 @@ export const useSendMessage = () => {
 };
 
 export const useChatUsers = () => {
+    const { authState } = useAuth();
     return useQuery<ChatUser[]>({
         queryKey: ['chat-users'],
         queryFn: async () => {
             return api.get('chat/users').json();
         },
         refetchInterval: 10000, // Refresh user list/status every 10 seconds
+        enabled: authState.isAuthenticated,
     });
 };

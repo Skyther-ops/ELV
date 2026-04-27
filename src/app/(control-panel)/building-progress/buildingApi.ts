@@ -301,3 +301,11 @@ export const usePendingHistories = (params: any) => {
         enabled: true,
     });
 };
+
+export interface FloorDrawingRevision {
+    id: number; status: string; version_name: string; revision_date: string; remarks?: string; file_content: string; creator?: any;
+}
+export const useFloorRevisions = (id: any) => ({ data: [], isLoading: false } as any);
+export const useAddFloorRevision = (id: any) => ({ mutateAsync: async () => {} } as any);
+export const useUpdateFloorRevision = (id: any) => ({ mutateAsync: async () => {} } as any);
+export const useDeleteFloorRevision = (id: any) => ({ mutateAsync: async () => {} } as any);

@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, API_BASE_URL } from '@/utils/api';
 
+export interface Point {
+    x: number;
+    y: number;
+}
+
 export interface TechnicalLayoutZoneObject {
     id: number;
     technical_layout_zone_id: number;

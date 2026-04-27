@@ -39,7 +39,7 @@ const FacilitatorDashboard: FC = () => {
     ].filter(module => {
         if (module.id === 'technical-layout') {
             const userRoles = Array.isArray(user?.role) ? user.role : [user?.role];
-            const isAuthorized = userRoles.some(r => ['supervisor', 'superadmin', 'admin'].includes(r as string));
+            const isAuthorized = userRoles.some(r => ['supervisor', 'superadmin', 'admin', 'facilitator'].includes(r as string));
             return isAuthorized;
         }
         return true;

@@ -26,6 +26,7 @@ const ROLES = {
     supervisor: { label: 'Supervisor', chip: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', dot: 'bg-violet-500' },
     facilitator: { label: 'Facilitator', chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
     member: { label: 'Member', chip: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', dot: 'bg-sky-500' },
+    businesses: { label: 'Business', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', dot: 'bg-emerald-500' },
 };
 
 function getRole(user: User): string {
@@ -140,6 +141,7 @@ export default function UsersPage() {
         supervisor: users.filter(u => getRole(u) === 'supervisor').length,
         facilitator: users.filter(u => getRole(u) === 'facilitator').length,
         member: users.filter(u => getRole(u) === 'member').length,
+        businesses: users.filter(u => getRole(u) === 'businesses').length,
     };
 
     if (loading) return <FuseLoading />;
@@ -178,7 +180,7 @@ export default function UsersPage() {
             <div className="px-20 py-10 flex items-center gap-8 shrink-0">
                 {/* Role tabs */}
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/5 rounded-lg p-1">
-                    {(['all', 'supervisor', 'facilitator', 'member'] as const).map(r => (
+                    {(['all', 'supervisor', 'facilitator', 'member', 'businesses'] as const).map(r => (
                         <button
                             key={r}
                             onClick={() => setFilterRole(r)}
@@ -362,6 +364,7 @@ export default function UsersPage() {
                                 <MenuItem value="member">Member</MenuItem>
                                 <MenuItem value="facilitator">Facilitator</MenuItem>
                                 <MenuItem value="supervisor">Supervisor</MenuItem>
+                                <MenuItem value="businesses">Business</MenuItem>
                             </Select>
                         </FormControl>
                     </div>
@@ -395,6 +398,7 @@ export default function UsersPage() {
                             <MenuItem value="member">Member</MenuItem>
                             <MenuItem value="facilitator">Facilitator</MenuItem>
                             <MenuItem value="supervisor">Supervisor</MenuItem>
+                            <MenuItem value="businesses">Business</MenuItem>
                         </Select>
                     </FormControl>
                 </DialogContent>

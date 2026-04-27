@@ -263,6 +263,36 @@ const navigationConfig: FuseNavItemType[] = [
 				url: 'management/users'
 			}
 		]
+	},
+	{
+		id: 'businesses-group',
+		title: 'Business Management',
+		type: 'group',
+		icon: 'heroicons-outline:briefcase',
+		auth: ['businesses', 'superadmin', 'admin'],
+		children: [
+			{
+				id: 'business-tenders',
+				title: 'Tenders',
+				type: 'item',
+				icon: 'heroicons-outline:document-text',
+				url: 'businesses/tenders'
+			},
+			{
+				id: 'business-master-list',
+				title: 'Master List',
+				type: 'item',
+				icon: 'heroicons-outline:list-bullet',
+				url: 'businesses/master-list'
+			},
+			{
+				id: 'business-project-master-list',
+				title: 'Project Master List',
+				type: 'item',
+				icon: 'heroicons-outline:clipboard-document-check',
+				url: 'businesses/project-master-list'
+			}
+		]
 	}
 ];
 

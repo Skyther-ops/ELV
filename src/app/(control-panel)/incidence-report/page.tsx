@@ -104,7 +104,7 @@ const IncidentReportPage: FC = () => {
     const renderPrintLayout = () => {
         const data = editingIncident || { ...formData, ir_no: 'DRAFT', photos: [] };
         return (
-            <div className="bg-white text-black font-sans mx-auto print:max-w-none print:w-full min-h-0 flex flex-col pt-8 print:!pt-0">
+            <div className="bg-white text-black font-sans mx-auto print:max-w-none print:w-full min-h-0 flex flex-col pt-8 print:!pt-0 px-8 print:px-0">
                 {/* Formal Header */}
                 <div className="flex justify-between items-end border-b-2 border-slate-800 pb-4 mb-8">
                     <div>
@@ -511,7 +511,7 @@ const IncidentReportPage: FC = () => {
                     html, body { background: white !important; }
                     /* display:none removes layout space (no blank pages) */
                     body > *:not(#print-report-container) { display: none !important; }
-                    @page { margin: 1.5cm; size: A4 portrait; }
+                    @page { margin: 1cm 1.2cm; size: A4 portrait; }
                 }
             `}} />
 
@@ -1094,7 +1094,7 @@ const IncidentReportPage: FC = () => {
                             tr, .photo-block { page-break-inside: avoid !important; }
                             .page-break-before-always { page-break-before: always !important; }
 
-                            @page { margin: 1.5cm; size: A4 portrait; }
+                            @page { margin: 1cm 1.2cm; size: A4 portrait; }
                         }
                     `}} />
                     <div className="w-full">

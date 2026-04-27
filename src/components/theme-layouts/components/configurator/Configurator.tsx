@@ -10,10 +10,11 @@ import ThemesPanel from 'src/components/theme-layouts/components/configurator/Th
 import useUser from '@auth/useUser';
 
 const Root = styled('div')(({ theme }) => ({
-	position: 'absolute',
+	position: 'fixed',
 	height: 80,
 	right: 0,
-	top: 160,
+	top: 'auto',
+    bottom: 24,
 	display: 'flex',
 	flexDirection: 'column',
 	alignItems: 'center',

@@ -3,6 +3,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SupervisorAccountIcon from '@mui/icons-material/SupervisorAccount';
 import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import EngineeringIcon from '@mui/icons-material/Engineering';
+import BusinessIcon from '@mui/icons-material/Business';
 
 /**
  * Role Selection Page
@@ -42,6 +43,16 @@ function RoleSelectPageView() {
             border: 'border-amber-500/40 hover:border-amber-400',
             path: '/sign-in/facilitator',
         },
+        {
+            key: 'businesses',
+            label: 'Business',
+            description: 'Manage business profile, analytics, and partnership opportunities.',
+            icon: <BusinessIcon sx={{ fontSize: 48 }} />,
+            accent: '#10b981',
+            gradient: 'from-emerald-600/20 to-emerald-800/10',
+            border: 'border-emerald-500/40 hover:border-emerald-400',
+            path: '/sign-in/businesses',
+        },
     ];
 
     return (
@@ -64,7 +75,7 @@ function RoleSelectPageView() {
             </div>
 
             {/* Role Cards */}
-            <div className="flex flex-col sm:flex-row gap-6 w-full max-w-5xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-7xl px-4">
                 {roles.map((role) => (
                     <button
                         key={role.key}

@@ -34,11 +34,17 @@ const StyledBadge = styled(Badge)(({ theme }) => ({
   },
 }));
 
+import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
+
 const OnlineUsersIndicator = () => {
+    const { authState } = useAuth();
+    const isAuthenticated = authState.isAuthenticated;
+
     const { data: onlineUsers = [] } = useQuery({
         queryKey: ['online-users'],
         queryFn: authGetOnlineUsers,
         refetchInterval: 30000, // Poll every 30 seconds
+        enabled: isAuthenticated
     });
 
     if (onlineUsers.length === 0) return null;

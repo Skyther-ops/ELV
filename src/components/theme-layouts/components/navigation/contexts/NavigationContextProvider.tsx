@@ -6,21 +6,38 @@ import FuseNavItemModel from '@fuse/core/FuseNavigation/models/FuseNavItemModel'
 import { PartialDeep } from 'type-fest';
 import { NavigationContext } from '@/components/theme-layouts/components/navigation/contexts/NavigationContext';
 import { useProject } from '@/context/ProjectContext';
+import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
 
 export function NavigationContextProvider({ children }: { children: ReactNode }) {
 	const { viewMode } = useProject();
+	const { authState } = useAuth();
+
+	// Detect business role
+	const isBusinessUser = useMemo(() => {
+		const role = authState?.user?.role;
+		if (!role) return false;
+		const roles = Array.isArray(role) ? role : [role];
+		return roles.some(r => typeof r === 'string' && r.toLowerCase() === 'businesses');
+	}, [authState?.user?.role]);
 
 	const filteredNavigationConfig = useMemo(() => {
-		return navigationConfig.filter(item => {
-			if (viewMode === 'ssdc') {
-				// Only show SSDC Ops and Management
-				return ['ssdc-operations-group', 'management-group'].includes(item.id);
-			} else {
-				// Only show Construction/Building related and Management
-				return ['inventory-group', 'building-group', 'scheduling-group', 'management-group'].includes(item.id);
-			}
-		});
-	}, [viewMode]);
+		if (isBusinessUser) {
+			// Business users only see their own group
+			return navigationConfig.filter(item => item.id === 'businesses-group');
+		}
+
+		if (viewMode === 'ssdc') {
+			// Only show SSDC Ops and Management
+			return navigationConfig.filter(item =>
+				['ssdc-operations-group', 'management-group'].includes(item.id)
+			);
+		} else {
+			// Only show Construction/Building related and Management
+			return navigationConfig.filter(item =>
+				['inventory-group', 'building-group', 'scheduling-group', 'management-group'].includes(item.id)
+			);
+		}
+	}, [viewMode, isBusinessUser]);
 
 	const [navigationItems, setNavigationItems] = useState<FuseFlatNavItemType[]>(
 		FuseNavigationHelper.flattenNavigation(filteredNavigationConfig)

@@ -6,6 +6,7 @@ import SupervisorSignInPageView from './components/views/SupervisorSignInPageVie
 import FacilitatorSignInPageView from './components/views/FacilitatorSignInPageView';
 import SignUpPageView from './components/views/SignUpPageView';
 import SignOutPageView from './components/views/SignOutPageView';
+import BusinessSignInPageView from './components/views/BusinessSignInPageView';
 
 const noLayoutConfig = {
     layout: {
@@ -46,6 +47,13 @@ const route: FuseRouteItemType = {
         {
             path: 'sign-in/facilitator',
             element: <FacilitatorSignInPageView />,
+            settings: noLayoutConfig,
+            auth: authRoles.onlyGuest
+        },
+        // Business login
+        {
+            path: 'sign-in/businesses',
+            element: <BusinessSignInPageView />,
             settings: noLayoutConfig,
             auth: authRoles.onlyGuest
         },

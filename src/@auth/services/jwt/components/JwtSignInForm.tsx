@@ -34,7 +34,7 @@ const defaultValues: FormType = {
 };
 
 type JwtSignInFormProps = {
-    restrictedRole?: 'member' | 'supervisor' | 'facilitator';
+    restrictedRole?: 'member' | 'supervisor' | 'facilitator' | 'businesses';
 };
 
 function JwtSignInForm({ restrictedRole }: JwtSignInFormProps) {
@@ -52,7 +52,7 @@ function JwtSignInForm({ restrictedRole }: JwtSignInFormProps) {
 
 	useEffect(() => {
 		if (isAuthenticated) {
-			navigate('/select-project');
+			navigate('/');
 		}
 	}, [isAuthenticated, navigate]);
 
@@ -84,7 +84,9 @@ function JwtSignInForm({ restrictedRole }: JwtSignInFormProps) {
                         return;
                     }
                 }
-				navigate('/select-project');
+                
+                // Let SmartInitialRedirect handle the destination, or go directly
+				navigate('/');
 			})
 			.catch((error) => {
                 console.error("Login catch error:", error);

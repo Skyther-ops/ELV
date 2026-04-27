@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AGATE TOWER</string>
+    <string name="title_activity_main">AGATE TOWER</string>
+    <string name="package_name">com.agatetower.app</string>
+    <string name="custom_url_scheme">com.agatetower.app</string>
+</resources>

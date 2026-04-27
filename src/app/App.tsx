@@ -11,7 +11,6 @@ import Authentication from '@auth/Authentication';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import MainThemeProvider from '../contexts/MainThemeProvider';
-import routes from '@/configs/routesConfig';
 import AppContext from '@/contexts/AppContext';
 import { FuseDialogContextProvider } from '@fuse/core/FuseDialog/contexts/FuseDialogContext/FuseDialogContextProvider';
 import { NavbarContextProvider } from '@/components/theme-layouts/components/navbar/contexts/NavbarContext/NavbarContextProvider';
@@ -19,6 +18,7 @@ import { QuickPanelProvider } from '@/components/theme-layouts/components/quickP
 import RootThemeProvider from '@/contexts/RootThemeProvider';
 import { NavigationContextProvider } from '@/components/theme-layouts/components/navigation/contexts/NavigationContextProvider';
 import { ProjectProvider } from '@/context/ProjectContext';
+import { MasterListProvider } from '@/app/(control-panel)/businesses/context/MasterListContext';
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -33,13 +33,8 @@ const queryClient = new QueryClient({
  * The main App component.
  */
 function App() {
-	const AppContextValue = {
-		routes
-	};
-
 	return (
 		<ErrorBoundary>
-			<AppContext value={AppContextValue}>
 				{/* Date Picker Localization Provider */}
 				<LocalizationProvider
 					dateAdapter={AdapterDateFns}
@@ -47,6 +42,7 @@ function App() {
 				>
 					<QueryClientProvider client={queryClient}>
 						<ProjectProvider>
+							<MasterListProvider>
 							<Authentication>
 								<FuseSettingsProvider>
 									<I18nProvider>
@@ -80,11 +76,11 @@ function App() {
 									</I18nProvider>
 								</FuseSettingsProvider>
 							</Authentication>
+							</MasterListProvider>
 						</ProjectProvider>
 						<ReactQueryDevtools initialIsOpen={false} />
 					</QueryClientProvider>
 				</LocalizationProvider>
-			</AppContext>
 		</ErrorBoundary >
 	);
 }

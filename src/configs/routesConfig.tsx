@@ -6,6 +6,7 @@ import ErrorBoundary from '@fuse/utils/ErrorBoundary';
 import { layoutConfigOnlyMain } from './layoutConfigTemplates';
 import settingsConfig from './settingsConfig';
 import App from '@/app/App';
+import SmartInitialRedirect from '@/app/SmartInitialRedirect';
 
 const namedRouteConfigModules: Record<string, unknown> = import.meta.glob('/src/app/**/*Route.tsx', {
 	eager: true
@@ -34,7 +35,7 @@ const routes: FuseRoutesType = [
 		children: [
 			{
 				path: '/',
-				element: <Navigate to="/select-project" />
+				element: <SmartInitialRedirect />
 			},
 			...mainRoutes,
 			{

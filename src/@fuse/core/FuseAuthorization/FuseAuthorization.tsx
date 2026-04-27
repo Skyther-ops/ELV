@@ -54,10 +54,17 @@ function FuseAuthorization({
       "/select-project",
     ];
 
+    // Business users never need a project — let them navigate freely within /businesses/*
+    const isBusinessPath = pathname.startsWith('/businesses');
+
     const isOnlyGuestAllowed = Array.isArray(auth) && auth.length === 0;
     const isGuest = isUserGuest(userRole);
 
-    const userHasPermission = FuseUtils.hasPermission(auth, userRole);
+    const rawUserRoles = Array.isArray(userRole) ? userRole : [userRole];
+    const normalizedUserRoles = rawUserRoles.map(r => typeof r === 'string' ? r.toLowerCase() : r);
+    const normalizedUserRoleProp = Array.isArray(userRole) ? normalizedUserRoles : (normalizedUserRoles[0] || userRole);
+
+    const userHasPermission = FuseUtils.hasPermission(auth, normalizedUserRoleProp);
 
     if (auth && !userHasPermission && !ignoredPaths.includes(pathname)) {
       setSessionRedirectUrl(pathname);
@@ -74,6 +81,8 @@ function FuseAuthorization({
     const newAccessGranted = auth ? userHasPermission : true;
     setAccessGranted(newAccessGranted);
 
+    const isBusinessUser = normalizedUserRoles.includes("businesses");
+
     // --- Routing Logic ---
     if (!newAccessGranted) {
       const redirectUrl = getSessionRedirectUrl() || loginRedirectUrl;
@@ -84,13 +93,14 @@ function FuseAuthorization({
         setTimeout(() => navigate(redirectUrl), 0);
         resetSessionRedirectUrl();
       }
-    } else if (!isGuest) {
+    } else if (!isGuest && !isBusinessUser) {
       // User is logged in and authorized for this route.
-      // Check Project Context
+      // Check Project Context (Business users bypass this)
       if (
         !activeProjectId &&
         pathname !== "/select-project" &&
-        !ignoredPaths.includes(pathname)
+        !ignoredPaths.includes(pathname) &&
+        !isBusinessPath
       ) {
         // Not in a project workspace, must select one first
         setTimeout(() => navigate("/select-project"), 0);
