@@ -26,6 +26,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{id}', [\App\Http\Controllers\Api\UserController::class, 'update']);
     Route::delete('/users/{id}', [\App\Http\Controllers\Api\UserController::class, 'destroy']);
 
+    // CORS Fix for images
+    Route::get('/storage/{path}', function ($path) {
+        $fullPath = storage_path('app/public/' . $path);
+        if (!file_exists($fullPath)) abort(404);
+        return response()->file($fullPath, ['Access-Control-Allow-Origin' => '*']);
+    })->where('path', '.*');
+
     Route::get('/online-users', [AuthController::class , 'onlineUsers']);
 
     // Chat routes
@@ -47,6 +54,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user-projects', [UserProjectController::class, 'index']);
     Route::post('/user-projects', [UserProjectController::class, 'store']);
     Route::delete('/user-projects/{id}', [UserProjectController::class, 'destroy']);
+
+    // ── Business Module: Tenders ──────────────────────────────────────
+    Route::get('/tenders', [\App\Http\Controllers\Api\TenderController::class, 'index']);
+    Route::get('/tenders/{id}', [\App\Http\Controllers\Api\TenderController::class, 'show']);
+    Route::post('/tenders', [\App\Http\Controllers\Api\TenderController::class, 'store']);
+    Route::put('/tenders/{id}', [\App\Http\Controllers\Api\TenderController::class, 'update']);
+    Route::delete('/tenders/{id}', [\App\Http\Controllers\Api\TenderController::class, 'destroy']);
+
+    Route::get('/tenders/{tenderId}/costing-items', [\App\Http\Controllers\Api\TenderCostingItemController::class, 'index']);
+    Route::post('/tenders/{tenderId}/costing-items', [\App\Http\Controllers\Api\TenderCostingItemController::class, 'store']);
+    Route::put('/tenders/{tenderId}/costing-items/{id}', [\App\Http\Controllers\Api\TenderCostingItemController::class, 'update']);
+    Route::delete('/tenders/{tenderId}/costing-items/{id}', [\App\Http\Controllers\Api\TenderCostingItemController::class, 'destroy']);
+
+    // ── Business Module: Master List ──────────────────────────────────
+    Route::get('/master-list', [\App\Http\Controllers\Api\MasterListController::class, 'index']);
+    Route::post('/master-list', [\App\Http\Controllers\Api\MasterListController::class, 'store']);
+    Route::put('/master-list/{id}', [\App\Http\Controllers\Api\MasterListController::class, 'update']);
+    Route::delete('/master-list/{id}', [\App\Http\Controllers\Api\MasterListController::class, 'destroy']);
+    Route::post('/master-list/seed', [\App\Http\Controllers\Api\MasterListController::class, 'seed']);
 
     // Project-Scoped Routes (Require X-Project-Id header)
     Route::middleware('project.scope')->group(function () {

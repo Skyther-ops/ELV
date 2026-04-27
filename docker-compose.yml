@@ -1,4 +1,4 @@
-version: '3.8'
+00version: '3.8'
 
 services:
   app:
