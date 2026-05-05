@@ -17,7 +17,7 @@ export interface Project {
     }[];
 }
 
-export type ViewMode = 'construction' | 'ssdc';
+export type ViewMode = 'construction' | 'ssdc' | 'business' | 'ict' | 'inventory';
 
 interface ProjectContextType {
     activeProjectId: number | null;
@@ -55,7 +55,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             }
         }
 
-        if (storedMode === 'construction' || storedMode === 'ssdc') {
+        if (storedMode) {
             setViewModeState(storedMode);
         }
     }, []);

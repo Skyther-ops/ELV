@@ -52,6 +52,8 @@ function FuseAuthorization({
       "/404",
       "/401",
       "/select-project",
+      "/portal",
+      "/users",
     ];
 
     // Business users never need a project — let them navigate freely within /businesses/*

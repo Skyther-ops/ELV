@@ -52,24 +52,9 @@ function NavbarStyle1Content(props: NavbarStyle1ContentProps) {
 	const { data: navigationData } = useNavigationItems();
 
 	const role = Array.isArray(user?.role) ? user.role[0] : user?.role;
-	const isSupervisor = role === 'supervisor';
+	const isBoss = role === 'supervisor' || role === 'superadmin' || role === 'admin';
 
-	// Read the selected view mode from local storage (set by SelectProjectPage)
-	const viewMode = localStorage.getItem('navbarViewMode') || 'construction';
-
-	// Determine which nav items to show based on mode
-	const filteredNavigation = navigationData.filter(item => {
-		// Only apply filtering to supervisors (since others only see what they have access to)
-		if (!isSupervisor) return true;
-
-		if (viewMode === 'ssdc') {
-			// SSDC mode shows SSDC Operations and Management
-			return ['ssdc-operations-group', 'management-group'].includes(item.id);
-		} else {
-			// Construction mode shows everything else except SSDC Operations
-			return item.id !== 'ssdc-operations-group';
-		}
-	});
+	const filteredNavigation = navigationData;
 
 	return (
 		<Root className={clsx('flex h-full flex-auto flex-col overflow-hidden', className)}>
@@ -90,25 +75,25 @@ function NavbarStyle1Content(props: NavbarStyle1ContentProps) {
 					<div
 						className="flex items-center gap-2 px-3 py-2 rounded-xl w-full"
 						style={{
-							background: isSupervisor
+							background: isBoss
 								? 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(139,92,246,0.08))'
 								: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.08))',
-							border: isSupervisor ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(59,130,246,0.3)',
+							border: isBoss ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(59,130,246,0.3)',
 						}}
 					>
-						{isSupervisor
+						{isBoss
 							? <SupervisorAccountIcon sx={{ fontSize: 18, color: '#a855f7' }} />
 							: <PersonIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
 						}
 						<div className="flex flex-col leading-tight">
 							<span
 								className="text-xs font-bold capitalize tracking-wide"
-								style={{ color: isSupervisor ? '#a855f7' : '#3b82f6' }}
+								style={{ color: isBoss ? '#a855f7' : '#3b82f6' }}
 							>
 								{role ?? 'member'}
 							</span>
-							<span className="text-[10px] opacity-60" style={{ color: isSupervisor ? '#a855f7' : '#3b82f6' }}>
-								{isSupervisor ? 'Full access' : 'View only (building)'}
+							<span className="text-[10px] opacity-60" style={{ color: isBoss ? '#a855f7' : '#3b82f6' }}>
+								{isBoss ? 'Full access' : 'View only (building)'}
 							</span>
 						</div>
 					</div>

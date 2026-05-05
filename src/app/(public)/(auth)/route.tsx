@@ -1,12 +1,8 @@
 import { FuseRouteItemType } from '@fuse/utils/FuseUtils';
 import authRoles from '@auth/authRoles';
-import RoleSelectPageView from './components/views/RoleSelectPageView';
-import MemberSignInPageView from './components/views/MemberSignInPageView';
-import SupervisorSignInPageView from './components/views/SupervisorSignInPageView';
-import FacilitatorSignInPageView from './components/views/FacilitatorSignInPageView';
+import SignInPageView from './components/views/SignInPageView';
 import SignUpPageView from './components/views/SignUpPageView';
 import SignOutPageView from './components/views/SignOutPageView';
-import BusinessSignInPageView from './components/views/BusinessSignInPageView';
 
 const noLayoutConfig = {
     layout: {
@@ -22,38 +18,10 @@ const noLayoutConfig = {
 
 const route: FuseRouteItemType = {
     children: [
-        // Role selection landing page
+        // Unified login page
         {
             path: 'sign-in',
-            element: <RoleSelectPageView />,
-            settings: noLayoutConfig,
-            auth: authRoles.onlyGuest
-        },
-        // Member login
-        {
-            path: 'sign-in/member',
-            element: <MemberSignInPageView />,
-            settings: noLayoutConfig,
-            auth: authRoles.onlyGuest
-        },
-        // Supervisor login
-        {
-            path: 'sign-in/supervisor',
-            element: <SupervisorSignInPageView />,
-            settings: noLayoutConfig,
-            auth: authRoles.onlyGuest
-        },
-        // Facilitator login
-        {
-            path: 'sign-in/facilitator',
-            element: <FacilitatorSignInPageView />,
-            settings: noLayoutConfig,
-            auth: authRoles.onlyGuest
-        },
-        // Business login
-        {
-            path: 'sign-in/businesses',
-            element: <BusinessSignInPageView />,
+            element: <SignInPageView />,
             settings: noLayoutConfig,
             auth: authRoles.onlyGuest
         },

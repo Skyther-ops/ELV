@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import api from '@/utils/api';
+import { API_BASE_URL } from '@/utils/api';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
@@ -22,7 +23,11 @@ import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
 import CloseIcon from '@mui/icons-material/Close';
-import LinkIcon from '@mui/icons-material/Link';
+import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DeleteIcon from '@mui/icons-material/Delete';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -34,24 +39,35 @@ import { useNavigate } from 'react-router';
 import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
 
 // ── Types ─────────────────────────────────────────────────────────
+export type PdfFile = { name: string; path: string; url: string };
+
 export type ProjectMasterListItem = {
     id: string;
     date: string;
     projectCode: string;
     projectTitle: string;
-    poClient: string;
+    poClientFiles: PdfFile[];
     bgDocument: string;
     bgIssueDate: string;
-    prPoProcurement: string;
-    deliveryOrder: string;
-    invoiceDocument: string;
-    projectProgressLink: string;
-    projectFolderLink: string;
-    sourcingLink: string;
-    quotationLink: string;
+    prPoProcurementFiles: PdfFile[];
+    deliveryOrderFiles: PdfFile[];
+    invoiceDocumentFiles: PdfFile[];
+    projectProgressFiles: PdfFile[];
+    projectFolderFiles: PdfFile[];
+    sourcingFiles: PdfFile[];
+    quotationFiles: PdfFile[];
 };
 
-// ── Link Helper ───────────────────────────────────────────────────
+// ── Link Helper & PDF URL fixer ─────────────────────────────────
+// Rewrites legacy localhost/storage URLs to go through the API server
+const fixPdfUrl = (url: string) => {
+    if (!url) return url;
+    // Replace bare localhost/storage with the API server URL
+    return url.replace(
+        /^http:\/\/localhost(\/storage\/)/,
+        `${API_BASE_URL.replace(/\/api$/, '')}/api/storage/`
+    );
+};
 const formatLink = (url: string) => {
     if (!url) return '';
     const trimmed = url.trim();
@@ -82,17 +98,40 @@ const RenderValue = ({ value, icon }: { value: string, icon?: any }) => {
 
 // ── Column definitions ────────────────────────────────────────────
 const COLUMNS = [
-    { id: 'poClient',            label: 'PO/ LPO/ WO from Client', width: 220, icon: <ReceiptIcon sx={{ fontSize: 16 }} /> },
-    { id: 'bgDocument',          label: 'BG Document',             width: 140, icon: <AttachFileIcon sx={{ fontSize: 16 }} /> },
-    { id: 'bgIssueDate',         label: 'BG Issues Date',          width: 140, icon: <CalendarMonthIcon sx={{ fontSize: 16 }} /> },
-    { id: 'prPoProcurement',     label: 'PR/PO to Procurement',    width: 220, icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
-    { id: 'deliveryOrder',       label: 'Delivery Order (DO)',     width: 160, icon: <LocalShippingIcon sx={{ fontSize: 16 }} /> },
-    { id: 'invoiceDocument',     label: 'Invoice Document',        width: 160, icon: <ReceiptIcon sx={{ fontSize: 16 }} /> },
-    { id: 'projectProgressLink', label: 'Project Progress',        width: 140, isLink: true },
-    { id: 'projectFolderLink',   label: 'Project Folder Link',     width: 180, isLink: true },
-    { id: 'sourcingLink',        label: 'Sourcing Link',           width: 140, isLink: true },
-    { id: 'quotationLink',       label: 'Quotation Link',          width: 140, isLink: true },
+    { id: 'poClientFiles',        label: 'PO/ LPO/ WO from Client', width: 200, isPdf: true },
+    { id: 'bgDocument',           label: 'BG Document',             width: 140, icon: <AttachFileIcon sx={{ fontSize: 16 }} /> },
+    { id: 'bgIssueDate',          label: 'BG Issues Date',          width: 140, icon: <CalendarMonthIcon sx={{ fontSize: 16 }} /> },
+    { id: 'prPoProcurementFiles', label: 'PR/PO to Procurement',    width: 200, isPdf: true },
+    { id: 'deliveryOrderFiles',   label: 'Delivery Order (DO)',     width: 180, isPdf: true },
+    { id: 'invoiceDocumentFiles', label: 'Invoice Document',        width: 180, isPdf: true },
+    { id: 'projectProgressFiles', label: 'Project Progress',        width: 180, isPdf: true },
+    { id: 'projectFolderFiles',   label: 'Project Folder',          width: 180, isPdf: true },
+    { id: 'sourcingFiles',        label: 'Sourcing',                width: 160, isPdf: true },
+    { id: 'quotationFiles',       label: 'Quotation',               width: 160, isPdf: true },
 ];
+
+// ── PDF chips shown in table cells ────────────────────────────────
+function PdfChips({ files }: { files: PdfFile[] }) {
+    if (!files || files.length === 0) return <Typography variant="caption" color="text.disabled">—</Typography>;
+    return (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {files.map((f, i) => (
+                <Tooltip key={i} title={f.name}>
+                    <Chip
+                        icon={<PictureAsPdfIcon sx={{ fontSize: 13 }} />}
+                        label={`PDF ${i + 1}`}
+                        size="small"
+                        component="a"
+                        href={fixPdfUrl(f.url)}
+                        target="_blank"
+                        clickable
+                        sx={{ fontSize: 10, height: 22, fontWeight: 700, bgcolor: alpha('#ef4444', 0.1), color: '#b91c1c', border: '1px solid', borderColor: alpha('#ef4444', 0.25) }}
+                    />
+                </Tooltip>
+            ))}
+        </Box>
+    );
+}
 
 const STATIC_COLUMNS = [
     { id: 'date',              label: 'Date',               width: 100 },
@@ -120,7 +159,7 @@ function HeaderCell({ col, sortKey, sortDir, onSort }: {
         }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {col.icon}
-                {col.isLink && <LinkIcon sx={{ fontSize: 16 }} />}
+                {col.isPdf && <PictureAsPdfIcon sx={{ fontSize: 16 }} />}
                 <span>{col.label}</span>
                 <SwapVertIcon sx={{
                     fontSize: 16, opacity: active ? 1 : 0.3,
@@ -208,30 +247,6 @@ function ProjectDialog({ open, initial, saving, onClose, onSave }: {
             </Box>
 
             <DialogContent sx={{ px: 4, py: 4 }}>
-                <SectionTitle title="Client & Procurement Documents" icon={<ReceiptIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
-                <Grid container spacing={2.5} sx={{ mb: 4 }}>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="PO/ LPO/ WO from Client" value={form.poClient || ''}
-                            onChange={(e:any) => set('poClient')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><ReceiptIcon sx={{ fontSize: 18, color: 'text.disabled' }} /></InputAdornment> }} />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="PR/PO to Procurement" value={form.prPoProcurement || ''}
-                            onChange={(e:any) => set('prPoProcurement')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><LocalShippingIcon sx={{ fontSize: 18, color: 'text.disabled' }} /></InputAdornment> }} />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="Delivery Order (DO)" value={form.deliveryOrder || ''}
-                            onChange={(e:any) => set('deliveryOrder')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><LocalShippingIcon sx={{ fontSize: 18, color: 'text.disabled' }} /></InputAdornment> }} />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="Invoice Document" value={form.invoiceDocument || ''}
-                            onChange={(e:any) => set('invoiceDocument')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><ReceiptIcon sx={{ fontSize: 18, color: 'text.disabled' }} /></InputAdornment> }} />
-                    </Grid>
-                </Grid>
-
                 <SectionTitle title="Banking & Guarantees" icon={<BusinessCenterIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
                 <Grid container spacing={2.5} sx={{ mb: 4 }}>
                     <Grid item xs={12} sm={6}>
@@ -247,29 +262,13 @@ function ProjectDialog({ open, initial, saving, onClose, onSave }: {
                     </Grid>
                 </Grid>
 
-                <SectionTitle title="Project Links & Resources" icon={<LinkIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
-                <Grid container spacing={2.5}>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="Project Progress Link" value={form.projectProgressLink || ''}
-                            onChange={(e:any) => set('projectProgressLink')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><LinkIcon sx={{ fontSize: 18, color: '#f59e0b' }} /></InputAdornment> }} />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="Project Folder Link" value={form.projectFolderLink || ''}
-                            onChange={(e:any) => set('projectFolderLink')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><FolderIcon sx={{ fontSize: 18, color: '#f59e0b' }} /></InputAdornment> }} />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="Sourcing Link" value={form.sourcingLink || ''}
-                            onChange={(e:any) => set('sourcingLink')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><SourceIcon sx={{ fontSize: 18, color: '#f59e0b' }} /></InputAdornment> }} />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        <StyledTextField label="Quotation Link" value={form.quotationLink || ''}
-                            onChange={(e:any) => set('quotationLink')(e.target.value)}
-                            InputProps={{ startAdornment: <InputAdornment position="start"><ReceiptIcon sx={{ fontSize: 18, color: '#f59e0b' }} /></InputAdornment> }} />
-                    </Grid>
-                </Grid>
+                <SectionTitle title="Document Uploads" icon={<PictureAsPdfIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
+                {!initial?.id && (
+                    <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>Save the project first, then upload PDFs from the edit dialog.</Alert>
+                )}
+                {initial?.id && (
+                    <PdfUploadSection tenderId={initial.id} />
+                )}
             </DialogContent>
 
             <DialogActions sx={{ px: 4, pb: 4, pt: 0, gap: 1.5 }}>
@@ -413,8 +412,8 @@ export default function ProjectMasterListPage() {
                                             </Tooltip>
                                         </td>
                                         
-                                        <td style={{ padding: '0 12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <RenderValue value={row.poClient} icon={<ReceiptIcon sx={{ fontSize: 14 }} />} />
+                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <PdfChips files={row.poClientFiles ?? []} />
                                         </td>
                                         <td style={{ padding: '0 12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
                                             {row.bgDocument ? (
@@ -425,36 +424,19 @@ export default function ProjectMasterListPage() {
                                             ) : <Typography variant="caption" color="text.disabled">—</Typography>}
                                         </td>
                                         <td style={{ padding: '0 12px', fontSize: 13, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>{row.bgIssueDate || <Typography variant="caption" color="text.disabled">—</Typography>}</td>
-                                        <td style={{ padding: '0 12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <RenderValue value={row.prPoProcurement} icon={<LocalShippingIcon sx={{ fontSize: 14 }} />} />
+                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <PdfChips files={row.prPoProcurementFiles ?? []} />
                                         </td>
-                                        <td style={{ padding: '0 12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            {row.deliveryOrder ? (
-                                                <Tooltip title={row.deliveryOrder}>
-                                                    <Chip icon={<LocalShippingIcon sx={{ fontSize: 14 }} />} label="View DO" size="small" component="a" href={formatLink(row.deliveryOrder)} target="_blank" clickable
-                                                        sx={{ fontSize: 10, height: 24, fontWeight: 700, bgcolor: alpha('#10b981', 0.1), color: '#047857', border: '1px solid', borderColor: alpha('#10b981', 0.2) }} />
-                                                </Tooltip>
-                                            ) : <Typography variant="caption" color="text.disabled">—</Typography>}
+                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <PdfChips files={row.deliveryOrderFiles ?? []} />
                                         </td>
-                                        <td style={{ padding: '0 12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            {row.invoiceDocument ? (
-                                                <Tooltip title={row.invoiceDocument}>
-                                                    <Chip icon={<ReceiptIcon sx={{ fontSize: 14 }} />} label="View Inv" size="small" component="a" href={formatLink(row.invoiceDocument)} target="_blank" clickable
-                                                        sx={{ fontSize: 10, height: 24, fontWeight: 700, bgcolor: alpha('#3b82f6', 0.1), color: '#1d4ed8', border: '1px solid', borderColor: alpha('#3b82f6', 0.2) }} />
-                                                </Tooltip>
-                                            ) : <Typography variant="caption" color="text.disabled">—</Typography>}
+                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <PdfChips files={row.invoiceDocumentFiles ?? []} />
                                         </td>
                                         
-                                        {[row.projectProgressLink, row.projectFolderLink, row.sourcingLink, row.quotationLink].map((link, lidx) => (
-                                            <td key={lidx} style={{ padding: '0 12px', textAlign: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                                {link ? (
-                                                    <Tooltip title={link}>
-                                                        <IconButton size="small" component="a" href={formatLink(link)} target="_blank"
-                                                            sx={{ color: '#f59e0b', bgcolor: alpha('#f59e0b', 0.05), '&:hover': { bgcolor: alpha('#f59e0b', 0.15) } }}>
-                                                            <LinkIcon sx={{ fontSize: 18 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                ) : <Typography variant="caption" color="text.disabled">—</Typography>}
+                                        {(['projectProgressFiles', 'projectFolderFiles', 'sourcingFiles', 'quotationFiles'] as const).map((col) => (
+                                            <td key={col} style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                                <PdfChips files={(row as any)[col] ?? []} />
                                             </td>
                                         ))}
 
@@ -489,34 +471,160 @@ export default function ProjectMasterListPage() {
 // ── Helpers ───────────────────────────────────────────────────────
 function fromApi(raw: any): ProjectMasterListItem {
     return {
-        id:                String(raw.id),
-        date:              raw.date              ?? '',
-        projectCode:       raw.project_code      ?? '',
-        projectTitle:      raw.project_title     ?? '',
-        poClient:          raw.po_client         ?? '',
-        bgDocument:        raw.bg_document       ?? '',
-        bgIssueDate:       raw.bg_issue_date     ?? '',
-        prPoProcurement:   raw.pr_po_procurement ?? '',
-        deliveryOrder:     raw.delivery_order    ?? '',
-        invoiceDocument:   raw.invoice_document  ?? '',
-        projectProgressLink: raw.project_progress_link ?? '',
-        projectFolderLink: raw.project_folder_link ?? '',
-        sourcingLink:      raw.sourcing_link      ?? '',
-        quotationLink:     raw.quotation_link     ?? '',
+        id:                     String(raw.id),
+        date:                   raw.date              ?? '',
+        projectCode:            raw.project_code      ?? '',
+        projectTitle:           raw.project_title     ?? '',
+        poClientFiles:          raw.po_client         ?? [],
+        bgDocument:             raw.bg_document       ?? '',
+        bgIssueDate:            raw.bg_issue_date     ?? '',
+        prPoProcurementFiles:   raw.pr_po_procurement ?? [],
+        deliveryOrderFiles:     raw.delivery_order    ?? [],
+        invoiceDocumentFiles:   raw.invoice_document  ?? [],
+        projectProgressFiles:   raw.project_progress_files ?? [],
+        projectFolderFiles:     raw.project_folder_files   ?? [],
+        sourcingFiles:          raw.sourcing_files         ?? [],
+        quotationFiles:         raw.quotation_files        ?? [],
     };
 }
 
 function toApi(form: Partial<ProjectMasterListItem>) {
     return {
-        po_client:              form.poClient              || null,
-        bg_document:            form.bgDocument            || null,
-        bg_issue_date:          form.bgIssueDate           || null,
-        pr_po_procurement:      form.prPoProcurement       || null,
-        delivery_order:         form.deliveryOrder         || null,
-        invoice_document:       form.invoiceDocument       || null,
-        project_progress_link:  form.projectProgressLink   || null,
-        project_folder_link:    form.projectFolderLink     || null,
-        sourcing_link:          form.sourcingLink          || null,
-        quotation_link:         form.quotationLink         || null,
+        bg_document:       form.bgDocument       || null,
+        bg_issue_date:     form.bgIssueDate      || null,
     };
+}
+
+// ── PDF Upload Section (inside dialog) ───────────────────────────
+const PDF_SECTIONS: { column: string; label: string; icon: any; group: string }[] = [
+    { column: 'po_client',              label: 'PO/ LPO/ WO from Client', icon: <ReceiptIcon sx={{ fontSize: 16 }} />,         group: 'Client & Procurement' },
+    { column: 'pr_po_procurement',      label: 'PR/PO to Procurement',    icon: <LocalShippingIcon sx={{ fontSize: 16 }} />,   group: 'Client & Procurement' },
+    { column: 'delivery_order',         label: 'Delivery Order (DO)',      icon: <LocalShippingIcon sx={{ fontSize: 16 }} />,   group: 'Client & Procurement' },
+    { column: 'invoice_document',       label: 'Invoice Document',         icon: <ReceiptIcon sx={{ fontSize: 16 }} />,         group: 'Client & Procurement' },
+    { column: 'project_progress_files', label: 'Project Progress',         icon: <BusinessCenterIcon sx={{ fontSize: 16 }} />, group: 'Project Documents' },
+    { column: 'project_folder_files',   label: 'Project Folder',           icon: <FolderIcon sx={{ fontSize: 16 }} />,          group: 'Project Documents' },
+    { column: 'sourcing_files',         label: 'Sourcing',                 icon: <SourceIcon sx={{ fontSize: 16 }} />,          group: 'Project Documents' },
+    { column: 'quotation_files',        label: 'Quotation',                icon: <ReceiptIcon sx={{ fontSize: 16 }} />,         group: 'Project Documents' },
+];
+
+function PdfUploadSection({ tenderId }: { tenderId: string }) {
+    const [data, setData]       = useState<ProjectMasterListItem | null>(null);
+    const [uploading, setUploading] = useState<string | null>(null);
+    const [deleting, setDeleting]   = useState<string | null>(null);
+    const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+    useEffect(() => {
+        api.get(`tenders/${tenderId}`).json<any>().then(raw => setData(fromApi(raw))).catch(console.error);
+    }, [tenderId]);
+
+    const handleUpload = async (column: string, files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        setUploading(column);
+        try {
+            const fd = new FormData();
+            fd.append('column', column);
+            Array.from(files).forEach(f => fd.append('files[]', f));
+            const updated = await api.post(`tenders/${tenderId}/upload-files`, { body: fd }).json<any>();
+            setData(fromApi(updated));
+        } catch (e) { console.error(e); }
+        finally { setUploading(null); }
+    };
+
+    const handleDelete = async (column: string, path: string) => {
+        setDeleting(path);
+        try {
+            const updated = await api.delete(`tenders/${tenderId}/files`, { json: { column, path } }).json<any>();
+            setData(fromApi(updated));
+        } catch (e) { console.error(e); }
+        finally { setDeleting(null); }
+    };
+
+    const fileKey = (col: string): keyof ProjectMasterListItem => {
+        const map: Record<string, keyof ProjectMasterListItem> = {
+            po_client:              'poClientFiles',
+            pr_po_procurement:      'prPoProcurementFiles',
+            delivery_order:         'deliveryOrderFiles',
+            invoice_document:       'invoiceDocumentFiles',
+            project_progress_files: 'projectProgressFiles',
+            project_folder_files:   'projectFolderFiles',
+            sourcing_files:         'sourcingFiles',
+            quotation_files:        'quotationFiles',
+        };
+        return map[col];
+    };
+
+    if (!data) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={24} /></Box>;
+
+    return (
+        <Grid container spacing={2}>
+            {(() => {
+                let lastGroup = '';
+                return PDF_SECTIONS.map(({ column, label, icon, group }) => {
+                    const files = (data[fileKey(column)] as PdfFile[]) ?? [];
+                    const isUp  = uploading === column;
+                    const showGroupHeader = group !== lastGroup;
+                    lastGroup = group;
+                    return (
+                        <React.Fragment key={column}>
+                            {showGroupHeader && (
+                                <Grid item xs={12}>
+                                    <SectionTitle title={group} icon={group === 'Client & Procurement' ? <ReceiptIcon sx={{ fontSize: 16, color: '#f59e0b' }} /> : <FolderIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
+                                </Grid>
+                            )}
+                            <Grid item xs={12} sm={6}>
+                                <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            {icon}
+                                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</Typography>
+                                        </Box>
+                                        <Button
+                                            size="small"
+                                            startIcon={isUp ? <CircularProgress size={12} /> : <UploadFileIcon sx={{ fontSize: 14 }} />}
+                                            disabled={isUp}
+                                            onClick={() => inputRefs.current[column]?.click()}
+                                            sx={{ textTransform: 'none', fontWeight: 700, fontSize: 11, borderRadius: 2, bgcolor: alpha('#f59e0b', 0.1), color: '#b45309', '&:hover': { bgcolor: alpha('#f59e0b', 0.2) } }}
+                                        >
+                                            Upload PDF
+                                        </Button>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="application/pdf"
+                                            style={{ display: 'none' }}
+                                            ref={el => { inputRefs.current[column] = el; }}
+                                            onChange={e => handleUpload(column, e.target.files)}
+                                        />
+                                    </Box>
+                                    {isUp && <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />}
+                                    {files.length === 0 ? (
+                                        <Typography variant="caption" color="text.disabled">No PDFs uploaded yet</Typography>
+                                    ) : (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                            {files.map((f, i) => (
+                                                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: alpha('#ef4444', 0.05), borderRadius: 1.5, px: 1, py: 0.5 }}>
+                                                    <PictureAsPdfIcon sx={{ fontSize: 14, color: '#ef4444', flexShrink: 0 }} />
+                                                    <Tooltip title={f.name}>
+                                                        <Typography component="a" href={fixPdfUrl(f.url)} target="_blank"
+                                                            sx={{ fontSize: 11, fontWeight: 600, color: '#b91c1c', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                                                            {f.name}
+                                                        </Typography>
+                                                    </Tooltip>
+                                                    <IconButton size="small" disabled={deleting === f.path}
+                                                        onClick={() => handleDelete(column, f.path)}
+                                                        sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: '#ef4444' } }}>
+                                                        {deleting === f.path ? <CircularProgress size={12} /> : <DeleteIcon sx={{ fontSize: 14 }} />}
+                                                    </IconButton>
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    )}
+                                </Box>
+                            </Grid>
+                        </React.Fragment>
+                    );
+                });
+            })()}
+        </Grid>
+    );
 }

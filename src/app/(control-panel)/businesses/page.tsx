@@ -1,8 +1,8 @@
-import BusinessDashboard from './BusinessDashboard';
+import TenderDashboardPage from './TenderDashboardPage';
 
 /**
  * The Business Dashboard page.
  */
 export default function BusinessDashboardPage() {
-	return <BusinessDashboard />;
+	return <TenderDashboardPage />;
 }

@@ -10,9 +10,12 @@ import FullScreenToggle from '../../components/FullScreenToggle';
 import NavigationShortcuts from '../../components/navigation/NavigationShortcuts';
 import QuickPanelToggleButton from '../../components/quickPanel/QuickPanelToggleButton';
 import MiniWeatherWidget from '../../components/MiniWeatherWidget';
+import NotificationBell from '../../components/NotificationBell';
 import { Layout1ConfigDefaultsType } from '@/components/theme-layouts/layout1/Layout1Config';
 import useThemeMediaQuery from '../../../../@fuse/hooks/useThemeMediaQuery';
-import { AppBar, Divider } from '@mui/material';
+import { AppBar, Divider, Button, Tooltip } from '@mui/material';
+import AppsIcon from '@mui/icons-material/Apps';
+import { useNavigate } from 'react-router';
 import ToolbarTheme from 'src/contexts/ToolbarTheme';
 import OnlineUsersIndicator from '../../components/OnlineUsersIndicator';
 
@@ -29,6 +32,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
 	const settings = useFuseLayoutSettings();
 	const config = settings.config as Layout1ConfigDefaultsType;
 	const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down('lg'));
+	const navigate = useNavigate();
 
 	return (
 		<ToolbarTheme>
@@ -58,12 +62,25 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
 					</div>
 
 					<div className="flex items-center overflow-x-auto px-2 py-2 md:px-4">
+						<Tooltip title="Switch System">
+							<Button
+								variant="outlined"
+								color="inherit"
+								size="small"
+								startIcon={<AppsIcon />}
+								onClick={() => navigate('/portal')}
+								sx={{ mr: 4, borderRadius: 2, textTransform: 'none', fontWeight: 600, borderColor: 'rgba(255,255,255,0.2)' }}
+							>
+								Switch System
+							</Button>
+						</Tooltip>
 						<div className="mr-6">
 							<OnlineUsersIndicator />
 						</div>
 						<div className="mr-2 pr-2">
 							<MiniWeatherWidget />
 						</div>
+                        <NotificationBell />
 						<FullScreenToggle />
 						<LightDarkModeToggle
 							lightTheme={_.find(themeOptions, { id: 'Default' })}

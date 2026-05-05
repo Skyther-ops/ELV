@@ -23,6 +23,7 @@ import { enqueueSnackbar } from 'notistack';
 import { formatDistanceToNow } from 'date-fns';
 
 const ROLES = {
+    superadmin: { label: 'Super Admin', chip: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300', dot: 'bg-rose-500' },
     supervisor: { label: 'Supervisor', chip: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', dot: 'bg-violet-500' },
     facilitator: { label: 'Facilitator', chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
     member: { label: 'Member', chip: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', dot: 'bg-sky-500' },
@@ -138,6 +139,7 @@ export default function UsersPage() {
 
     const counts = {
         all: users.length,
+        superadmin: users.filter(u => getRole(u) === 'superadmin').length,
         supervisor: users.filter(u => getRole(u) === 'supervisor').length,
         facilitator: users.filter(u => getRole(u) === 'facilitator').length,
         member: users.filter(u => getRole(u) === 'member').length,
@@ -180,7 +182,7 @@ export default function UsersPage() {
             <div className="px-20 py-10 flex items-center gap-8 shrink-0">
                 {/* Role tabs */}
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/5 rounded-lg p-1">
-                    {(['all', 'supervisor', 'facilitator', 'member', 'businesses'] as const).map(r => (
+                    {(['all', 'superadmin', 'supervisor', 'facilitator', 'member', 'businesses'] as const).map(r => (
                         <button
                             key={r}
                             onClick={() => setFilterRole(r)}
@@ -190,7 +192,7 @@ export default function UsersPage() {
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                             }`}
                         >
-                            {r === 'all' ? 'All' : r}
+                            {r === 'all' ? 'All' : (r === 'superadmin' ? 'Super Admin' : r)}
                             <span className={`ml-1.5 text-[10px] font-black ${filterRole === r ? 'text-blue-600' : 'text-gray-400'}`}>
                                 {counts[r]}
                             </span>
@@ -361,9 +363,10 @@ export default function UsersPage() {
                         <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '13px' } }}>
                             <InputLabel>Role</InputLabel>
                             <Select value={form.role} label="Role" onChange={e => setForm({ ...form, role: e.target.value })}>
-                                <MenuItem value="member">Member</MenuItem>
-                                <MenuItem value="facilitator">Facilitator</MenuItem>
+                                <MenuItem value="superadmin">Super Admin</MenuItem>
                                 <MenuItem value="supervisor">Supervisor</MenuItem>
+                                <MenuItem value="facilitator">Facilitator</MenuItem>
+                                <MenuItem value="member">Member</MenuItem>
                                 <MenuItem value="businesses">Business</MenuItem>
                             </Select>
                         </FormControl>
@@ -395,9 +398,10 @@ export default function UsersPage() {
                     <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '13px' } }}>
                         <InputLabel>New Role</InputLabel>
                         <Select value={editRole} label="New Role" onChange={e => setEditRole(e.target.value)}>
-                            <MenuItem value="member">Member</MenuItem>
-                            <MenuItem value="facilitator">Facilitator</MenuItem>
+                            <MenuItem value="superadmin">Super Admin</MenuItem>
                             <MenuItem value="supervisor">Supervisor</MenuItem>
+                            <MenuItem value="facilitator">Facilitator</MenuItem>
+                            <MenuItem value="member">Member</MenuItem>
                             <MenuItem value="businesses">Business</MenuItem>
                         </Select>
                     </FormControl>

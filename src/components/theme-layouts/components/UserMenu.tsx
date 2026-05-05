@@ -172,6 +172,17 @@ function UserMenu(props: UserMenuProps) {
 						</MenuItem>
 						<MenuItem
 							component={Link}
+							to="/portal"
+							role="button"
+							onClick={userMenuClose}
+						>
+							<ListItemIcon>
+								<FuseSvgIcon>heroicons-outline:squares-2x2</FuseSvgIcon>
+							</ListItemIcon>
+							<ListItemText primary="Switch System" />
+						</MenuItem>
+						<MenuItem
+							component={Link}
 							to="/select-project"
 							role="button"
 							onClick={userMenuClose}

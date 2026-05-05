@@ -42,41 +42,41 @@ function App() {
 				>
 					<QueryClientProvider client={queryClient}>
 						<ProjectProvider>
-							<MasterListProvider>
 							<Authentication>
-								<FuseSettingsProvider>
-									<I18nProvider>
-										{/* Theme Provider */}
-										<RootThemeProvider>
-											<MainThemeProvider>
-												<NavbarContextProvider>
-													<NavigationContextProvider>
-														<FuseDialogContextProvider>
-															{/* Notistack Notification Provider */}
-															<SnackbarProvider
-																maxSnack={5}
-																anchorOrigin={{
-																	vertical: 'bottom',
-																	horizontal: 'right'
-																}}
-																classes={{
-																	containerRoot:
-																		'bottom-0 right-0 mb-13 md:mb-17 mr-2 lg:mr-20 z-99'
-																}}
-															>
-																<QuickPanelProvider>
-																	<FuseLayout layouts={themeLayouts} />
-																</QuickPanelProvider>
-															</SnackbarProvider>
-														</FuseDialogContextProvider>
-													</NavigationContextProvider>
-												</NavbarContextProvider>
-											</MainThemeProvider>
-										</RootThemeProvider>
-									</I18nProvider>
-								</FuseSettingsProvider>
+								<MasterListProvider>
+									<FuseSettingsProvider>
+										<I18nProvider>
+											{/* Theme Provider */}
+											<RootThemeProvider>
+												<MainThemeProvider>
+													<NavbarContextProvider>
+														<NavigationContextProvider>
+															<FuseDialogContextProvider>
+																{/* Notistack Notification Provider */}
+																<SnackbarProvider
+																	maxSnack={5}
+																	anchorOrigin={{
+																		vertical: 'bottom',
+																		horizontal: 'right'
+																	}}
+																	classes={{
+																		containerRoot:
+																			'bottom-0 right-0 mb-13 md:mb-17 mr-2 lg:mr-20 z-99'
+																	}}
+																>
+																	<QuickPanelProvider>
+																		<FuseLayout layouts={themeLayouts} />
+																	</QuickPanelProvider>
+																</SnackbarProvider>
+															</FuseDialogContextProvider>
+														</NavigationContextProvider>
+													</NavbarContextProvider>
+												</MainThemeProvider>
+											</RootThemeProvider>
+										</I18nProvider>
+									</FuseSettingsProvider>
+								</MasterListProvider>
 							</Authentication>
-							</MasterListProvider>
 						</ProjectProvider>
 						<ReactQueryDevtools initialIsOpen={false} />
 					</QueryClientProvider>

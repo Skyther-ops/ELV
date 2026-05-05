@@ -20,15 +20,7 @@ function SmartInitialRedirect() {
 		return <Navigate to="/sign-in" />;
 	}
 
-	const user = authState.user;
-	const rawRoles = Array.isArray(user.role) ? user.role : [user.role];
-	const roles = rawRoles.map(r => typeof r === 'string' ? r.toLowerCase() : r);
-	
-	if (roles.includes('businesses')) {
-		return <Navigate to="/businesses" />;
-	}
-
-	return <Navigate to="/select-project" />;
+	return <Navigate to="/portal" />;
 }
 
 export default SmartInitialRedirect;

@@ -35,9 +35,14 @@ import CloseIcon from '@mui/icons-material/Close';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
+import SendIcon from '@mui/icons-material/Send';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 import { useMasterList, MasterListItem } from './context/MasterListContext';
 import { useNavigate } from 'react-router';
 import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
+import TenderCostingReportDialog from './components/TenderCostingReportDialog';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 // ── Types ─────────────────────────────────────────────────────────
 export type Tender = {
@@ -60,18 +65,21 @@ export type Tender = {
     margin?: number;
     submissionDate?: string;
     successRate?: string;
-    poClient?: string;
-    bgDocument?: string;
-    bgIssueDate?: string;
-    prPoProcurement?: string;
-    deliveryOrder?: string;
-    invoiceDocument?: string;
+
     projectProgressLink?: string;
     projectFolderLink?: string;
     sourcingLink?: string;
     quotationLink?: string;
     creator?: { id: number, name: string };
     creatorName?: string;
+    verification_status?: string;
+    verified_at?: string;
+    approved_at?: string;
+    createdAt?: string;
+    verifier_signature?: string;
+    approver_signature?: string;
+    verifier?: { id: number, name: string };
+    approver?: { id: number, name: string };
 };
 
 // ── Column definitions ────────────────────────────────────────────
@@ -603,18 +611,21 @@ function fromApi(raw: any): Tender {
         margin:            raw.margin            != null ? Number(raw.margin) : undefined,
         submissionDate:    raw.submission_date   ?? '',
         successRate:       raw.success_rate      ?? '',
-        poClient:          raw.po_client         ?? '',
-        bgDocument:        raw.bg_document       ?? '',
-        bgIssueDate:       raw.bg_issue_date     ?? '',
-        prPoProcurement:   raw.pr_po_procurement ?? '',
-        deliveryOrder:     raw.delivery_order    ?? '',
-        invoiceDocument:   raw.invoice_document  ?? '',
+
         projectProgressLink: raw.project_progress_link ?? '',
         projectFolderLink: raw.project_folder_link ?? '',
         sourcingLink:      raw.sourcing_link      ?? '',
         quotationLink:     raw.quotation_link     ?? '',
         creator:           raw.creator           ? { id: raw.creator.id, name: raw.creator.name } : undefined,
         creatorName:       raw.creator?.name     || '—',
+        verification_status: raw.verification_status,
+        verified_at:       raw.verified_at,
+        approved_at:       raw.approved_at,
+        createdAt:         raw.created_at,
+        verifier_signature: raw.verifier_signature,
+        approver_signature: raw.approver_signature,
+        verifier:          raw.verifier ? { id: raw.verifier.id, name: raw.verifier.name } : undefined,
+        approver:          raw.approver ? { id: raw.approver.id, name: raw.approver.name } : undefined,
     };
 }
 
@@ -638,12 +649,7 @@ function toApi(form: Omit<Tender, 'id'>) {
         margin:             form.margin            != null ? form.margin : null,
         submission_date:    form.submissionDate    || null,
         success_rate:       form.successRate       || null,
-        po_client:          form.poClient          || null,
-        bg_document:        form.bgDocument        || null,
-        bg_issue_date:      form.bgIssueDate       || null,
-        pr_po_procurement:  form.prPoProcurement   || null,
-        delivery_order:     form.deliveryOrder     || null,
-        invoice_document:   form.invoiceDocument   || null,
+
         project_progress_link: form.projectProgressLink || null,
         project_folder_link: form.projectFolderLink || null,
         sourcing_link:      form.sourcingLink      || null,
@@ -675,12 +681,20 @@ export default function TendersPage() {
         agencyTypes: '',
         projectTitle: '',
     });
+    const [reportOpen, setReportOpen] = useState(false);
+    const [reportTender, setReportTender] = useState<Tender | null>(null);
+    const [reportItems, setReportItems] = useState<any[]>([]);
 
     const setF = (field: keyof typeof filters) => (val: string) => setFilters(p => ({ ...p, [field]: val }));
     const clearFilters = () => setFilters({ startDate: '', endDate: '', type: '', company: '', customer: '', agencyTypes: '', projectTitle: '' });
 
     const { authState } = useAuth();
     const currentUser = authState?.user;
+    const role = (currentUser as any)?.role;
+    const userRoles = Array.isArray(role) ? role : [role];
+    const isSuperAdmin = userRoles.includes('superadmin');
+    const isAdmin = userRoles.includes('admin');
+    const isSupervisor = userRoles.includes('supervisor');
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
 
@@ -730,14 +744,41 @@ export default function TendersPage() {
         }
     };
 
+    const handleVerification = async (id: string, action: 'request-verification' | 'verify' | 'approve', signature?: string) => {
+        try {
+            const up = await api.post(`tenders/${id}/${action}`, { json: { signature } }).json<any>();
+            setTenders(p => p.map(t => t.id === id ? { ...t, ...fromApi(up) } : t));
+            setSnack({ msg: 'Verification status updated.', sev: 'success' });
+        } catch {
+            setSnack({ msg: 'Failed to update verification status.', sev: 'error' });
+        }
+    };
+
     const openAdd  = () => { setEditTender(null); setDialogOpen(true); };
     const openEdit = (t: Tender) => { setEditTender(t); setDialogOpen(true); };
+
+    const handleOpenReport = async (t: Tender) => {
+        setReportTender(t);
+        try {
+            const items = await api.get(`tenders/${t.id}/costing-items`).json<any[]>();
+            setReportItems(items);
+            setReportOpen(true);
+        } catch (err) {
+            console.error("Failed to fetch costing items", err);
+            setSnack({ msg: "Failed to load report data.", sev: 'error' });
+        }
+    };
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase();
         return tenders
             .filter(t => !q || Object.values(t).some(v => String(v).toLowerCase().includes(q)))
-            .filter(t => !statusFilter || t.status === statusFilter)
+            .filter(t => {
+                if (!statusFilter) return true;
+                if (statusFilter === 'pending_verify_special') return t.verification_status === 'pending_supervisor';
+                if (statusFilter === 'pending_approve_special') return t.verification_status === 'pending_superadmin';
+                return t.status === statusFilter;
+            })
             .filter(t => !filters.startDate || (t.date && t.date >= filters.startDate))
             .filter(t => !filters.endDate || (t.date && t.date <= filters.endDate))
             .filter(t => !filters.type || t.type === filters.type)
@@ -766,6 +807,39 @@ export default function TendersPage() {
             return { sales, cost, gp, margin };
         };
 
+        const pendingVerify = tenders.filter(t => t.verification_status === 'pending_supervisor');
+        const pendingApprove = tenders.filter(t => t.verification_status === 'pending_superadmin');
+
+        const role = (currentUser as any)?.role;
+        const userRoles = Array.isArray(role) ? role : [role];
+        const isSuperAdmin = userRoles.includes('superadmin');
+        const isSupervisor = userRoles.includes('supervisor');
+        const isAdmin = userRoles.includes('admin');
+
+        const specialTabs = [];
+        
+        if (pendingVerify.length > 0 && (isSupervisor || isSuperAdmin)) {
+            specialTabs.push({
+                label: 'Pending My Verification',
+                value: 'pending_verify_special',
+                count: pendingVerify.length,
+                color: '#9333ea',
+                totals: calcTotals(pendingVerify),
+                tenders: pendingVerify
+            });
+        }
+
+        if (pendingApprove.length > 0 && (isSuperAdmin || isAdmin)) {
+            specialTabs.push({
+                label: 'Pending My Approval',
+                value: 'pending_approve_special',
+                count: pendingApprove.length,
+                color: '#16a34a',
+                totals: calcTotals(pendingApprove),
+                tenders: pendingApprove
+            });
+        }
+
         const allTab = { 
             label: 'All', value: '', count: tenders.length, color: '#64748b',
             totals: calcTotals(tenders),
@@ -782,8 +856,8 @@ export default function TendersPage() {
                 tenders: list
             };
         });
-        return [allTab, ...otherTabs];
-    }, [masterData?.status, tenders]);
+        return [...specialTabs, allTab, ...otherTabs];
+    }, [masterData?.status, tenders, currentUser]);
 
     return (
         <Box sx={{
@@ -827,12 +901,14 @@ export default function TendersPage() {
                                 <DownloadIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
-                        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openAdd}
-                            sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 1.5, boxShadow: 'none',
-                                  background: 'linear-gradient(135deg, #1e3a5f, #2563eb)',
-                                  '&:hover': { background: 'linear-gradient(135deg, #1a3354, #1d4ed8)', boxShadow: 'none' } }}>
-                            Add Tender
-                        </Button>
+                        {!isSuperAdmin && (
+                            <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={openAdd}
+                                sx={{ fontWeight: 700, textTransform: 'none', borderRadius: 1.5, boxShadow: 'none',
+                                      background: 'linear-gradient(135deg, #1e3a5f, #2563eb)',
+                                      '&:hover': { background: 'linear-gradient(135deg, #1a3354, #1d4ed8)', boxShadow: 'none' } }}>
+                                Add Tender
+                            </Button>
+                        )}
                     </Box>
                 </Box>
             </motion.div>
@@ -1081,9 +1157,31 @@ export default function TendersPage() {
                                         zIndex: 2, borderLeft: `1px solid ${theme.palette.divider}`
                                     }}>
                                         {(() => {
-                                            const isCreator = !tender.creator || (currentUser && tender.creator.id == (currentUser as any).id) || (currentUser as any)?.role === 'admin';
+                                            const role = (currentUser as any)?.role;
+                                            const userRoles = Array.isArray(role) ? role : [role];
+                                            const isSuperAdmin = userRoles.includes('superadmin');
+                                            const isAdmin = userRoles.includes('admin');
+                                            const isSupervisor = userRoles.includes('supervisor');
+                                            
+                                            const isCreator = !tender.creator || 
+                                                (currentUser && tender.creator.id == (currentUser as any).id) || 
+                                                isAdmin;
+                                            
+                                            const vStatus = tender.verification_status;
+                                            
                                             return (
-                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
+                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
+                                                    {(!vStatus || vStatus === 'draft') && !isSupervisor && !isSuperAdmin && !isAdmin && (
+                                                        <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(tender.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap' }}>
+                                                            Request Verification
+                                                        </Button>
+                                                    )}
+                                                    <IconButton size="small" color="primary" onClick={() => handleOpenReport(tender)} title="View Costing Report">
+                                                        <AssessmentIcon sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                    {vStatus === 'approved' && (
+                                                        <Chip size="small" label="Approved" color="success" variant="outlined" sx={{ height: 20, fontSize: 10 }} />
+                                                    )}
                                                     <Tooltip title="Tender Costing">
                                                         <IconButton size="small" onClick={() => navigate(`/businesses/tenders/${tender.id}/costing`)} sx={{ color: '#10b981' }}>
                                                             <AttachMoneyIcon sx={{ fontSize: 16 }} />
@@ -1155,6 +1253,25 @@ export default function TendersPage() {
                     {snack?.msg}
                 </Alert>
             </Snackbar>
+            <TenderCostingReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                tender={reportTender}
+                items={reportItems}
+                currentUser={currentUser}
+                onVerify={(signature) => {
+                    if (reportTender) {
+                        handleVerification(reportTender.id, 'verify', signature);
+                        setReportOpen(false);
+                    }
+                }}
+                onApprove={(signature) => {
+                    if (reportTender) {
+                        handleVerification(reportTender.id, 'approve', signature);
+                        setReportOpen(false);
+                    }
+                }}
+            />
         </Box>
     );
 }

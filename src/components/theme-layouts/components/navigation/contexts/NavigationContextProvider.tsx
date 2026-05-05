@@ -21,23 +21,36 @@ export function NavigationContextProvider({ children }: { children: ReactNode })
 	}, [authState?.user?.role]);
 
 	const filteredNavigationConfig = useMemo(() => {
+		// Always include the Switch System button for authorized roles
+		const baseItems = navigationConfig.filter(item => item.id === 'switch-system');
+		
 		if (isBusinessUser) {
-			// Business users only see their own group
-			return navigationConfig.filter(item => item.id === 'businesses-group');
+			// Business users only see their own group + Switch System
+			return navigationConfig.filter(item => ['businesses-group', 'switch-system'].includes(item.id));
+		}
+
+		// Detect if we should show business menu for supervisors/admins
+		const role = authState?.user?.role;
+		const roles = Array.isArray(role) ? role : [role];
+		const isAdminOrSupervisor = roles.some(r => ['supervisor', 'superadmin', 'admin'].includes(String(r).toLowerCase()));
+
+		if (viewMode === 'business' && isAdminOrSupervisor) {
+			// Business mode shows Business Management and Management
+			return navigationConfig.filter(item => ['businesses-group', 'management-group', 'switch-system'].includes(item.id));
 		}
 
 		if (viewMode === 'ssdc') {
 			// Only show SSDC Ops and Management
 			return navigationConfig.filter(item =>
-				['ssdc-operations-group', 'management-group'].includes(item.id)
+				['ssdc-operations-group', 'management-group', 'switch-system'].includes(item.id)
 			);
 		} else {
 			// Only show Construction/Building related and Management
 			return navigationConfig.filter(item =>
-				['inventory-group', 'building-group', 'scheduling-group', 'management-group'].includes(item.id)
+				['inventory-group', 'building-group', 'scheduling-group', 'management-group', 'switch-system'].includes(item.id)
 			);
 		}
-	}, [viewMode, isBusinessUser]);
+	}, [viewMode, isBusinessUser, authState?.user?.role]);
 
 	const [navigationItems, setNavigationItems] = useState<FuseFlatNavItemType[]>(
 		FuseNavigationHelper.flattenNavigation(filteredNavigationConfig)

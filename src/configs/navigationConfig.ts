@@ -13,6 +13,14 @@ i18n.addResourceBundle('ar', 'navigation', ar);
  */
 const navigationConfig: FuseNavItemType[] = [
 	{
+		id: 'switch-system',
+		title: 'Switch System',
+		type: 'item',
+		icon: 'heroicons-outline:squares-2x2',
+		url: 'portal',
+		auth: ['supervisor', 'superadmin', 'admin', 'member', 'facilitator']
+	},
+	{
 		id: 'inventory-group',
 		title: 'Inventory',
 		type: 'group',
@@ -269,8 +277,15 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Business Management',
 		type: 'group',
 		icon: 'heroicons-outline:briefcase',
-		auth: ['businesses', 'superadmin', 'admin'],
+		auth: ['businesses', 'superadmin', 'admin', 'supervisor'],
 		children: [
+			{
+				id: 'business-dashboard',
+				title: 'Tender Dashboard',
+				type: 'item',
+				icon: 'heroicons-outline:chart-bar',
+				url: 'businesses/dashboard'
+			},
 			{
 				id: 'business-tenders',
 				title: 'Tenders',
@@ -291,6 +306,13 @@ const navigationConfig: FuseNavItemType[] = [
 				type: 'item',
 				icon: 'heroicons-outline:clipboard-document-check',
 				url: 'businesses/project-master-list'
+			},
+			{
+				id: 'business-license-tracking',
+				title: 'License Tracking',
+				type: 'item',
+				icon: 'heroicons-outline:shield-check',
+				url: 'businesses/license-tracking'
 			}
 		]
 	}

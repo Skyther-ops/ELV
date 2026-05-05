@@ -16,6 +16,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
+import TenderCostingReportDialog from './components/TenderCostingReportDialog';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 const SUCCESS_RATES = [
     { value: '10% Submission', color: '#991b1b', bgcolor: '#fee2e2' },
@@ -31,6 +33,7 @@ export default function TenderCostingPage() {
     const [items, setItems] = useState<any[]>([]);
     const [isEditing, setIsEditing] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [reportOpen, setReportOpen] = useState(false);
     
     const { authState } = useAuth();
     const currentUser = authState?.user;
@@ -182,7 +185,11 @@ export default function TenderCostingPage() {
                 </Box>
                 
                 {tender && (
-                    <Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button variant="outlined" size="small" startIcon={<AssessmentIcon />} onClick={() => setReportOpen(true)}
+                            sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 700, px: 2 }}>
+                            View Report
+                        </Button>
                         {!isEditing ? (
                             canEdit && (
                                 <Button variant="contained" size="small" startIcon={<EditIcon />} onClick={() => setIsEditing(true)}
@@ -415,6 +422,26 @@ export default function TenderCostingPage() {
                     </Box>
                 )}
             </Box>
+
+            <TenderCostingReportDialog
+                open={reportOpen}
+                onClose={() => setReportOpen(false)}
+                tender={tender}
+                items={items}
+                currentUser={currentUser}
+                onVerify={(signature) => {
+                    api.post(`tenders/${id}/verify`, { json: { signature } }).json().then(() => {
+                        setReportOpen(false);
+                        window.location.reload();
+                    });
+                }}
+                onApprove={(signature) => {
+                    api.post(`tenders/${id}/approve`, { json: { signature } }).json().then(() => {
+                        setReportOpen(false);
+                        window.location.reload();
+                    });
+                }}
+            />
         </Box>
     );
 }
