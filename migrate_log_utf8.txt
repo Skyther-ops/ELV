@@ -1,0 +1,150 @@
+﻿
+   INFO  Running migrations.  
+
+  2026_02_24_015941_seed_gf_bss_legends  58.11ms FAIL
+
+   Illuminate\Database\QueryException 
+
+  SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "floor_legend" does not exist
+LINE 1: select * from "floor_legend" where "floor_legend"."legend_id...
+                      ^ (Connection: pgsql, Host: 127.0.0.1, Port: 5432, Database: elv_db, SQL: select * from "floor_legend" where "floor_legend"."legend_id" = 23)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:838
+    834Γûò             $exceptionType = $this->isUniqueConstraintError($e)
+    835Γûò                 ? UniqueConstraintViolationException::class
+    836Γûò                 : QueryException::class;
+    837Γûò 
+  Γ₧£ 838Γûò             throw new $exceptionType(
+    839Γûò                 $this->getNameWithReadWriteType(),
+    840Γûò                 $query,
+    841Γûò                 $this->prepareBindings($bindings),
+    842Γûò                 $e,
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:425
+      PDOException::("SQLSTATE[42P01]: Undefined table: 7 ERROR:  relation "floor_legend" does not exist
+LINE 1: select * from "floor_legend" where "floor_legend"."legend_id...
+                      ^")
+
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:425
+      PDOStatement::execute()
+
+  3   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+      Illuminate\Database\Connection::{closure:Illuminate\Database\Connection::select():411}("select * from "floor_legend" where "floor_legend"."legend_id" = ?")
+
+  4   vendor\laravel\framework\src\Illuminate\Database\Connection.php:794
+      Illuminate\Database\Connection::runQueryCallback("select * from "floor_legend" where "floor_legend"."legend_id" = ?", Object(Closure))
+
+  5   vendor\laravel\framework\src\Illuminate\Database\Connection.php:411
+      Illuminate\Database\Connection::run("select * from "floor_legend" where "floor_legend"."legend_id" = ?", Object(Closure))
+
+  6   vendor\laravel\framework\src\Illuminate\Database\Query\Builder.php:3389
+      Illuminate\Database\Connection::select("select * from "floor_legend" where "floor_legend"."legend_id" = ?")
+
+  7   vendor\laravel\framework\src\Illuminate\Database\Query\Builder.php:3374
+      Illuminate\Database\Query\Builder::runSelect()
+
+  8   vendor\laravel\framework\src\Illuminate\Database\Query\Builder.php:3964
+      Illuminate\Database\Query\Builder::{closure:Illuminate\Database\Query\Builder::get():3373}()
+
+  9   vendor\laravel\framework\src\Illuminate\Database\Query\Builder.php:3373
+      Illuminate\Database\Query\Builder::onceWithColumns(Object(Closure))
+
+  10  vendor\laravel\framework\src\Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithPivotTable.php:508
+      Illuminate\Database\Query\Builder::get()
+
+  11  vendor\laravel\framework\src\Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithPivotTable.php:493
+      Illuminate\Database\Eloquent\Relations\BelongsToMany::getCurrentlyAttachedPivotsForIds()
+
+  12  vendor\laravel\framework\src\Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithPivotTable.php:99
+      Illuminate\Database\Eloquent\Relations\BelongsToMany::getCurrentlyAttachedPivots()
+
+  13  vendor\laravel\framework\src\Illuminate\Database\Eloquent\Relations\Concerns\InteractsWithPivotTable.php:74
+      Illuminate\Database\Eloquent\Relations\BelongsToMany::sync()
+
+  14  database\migrations\2026_02_24_015941_seed_gf_bss_legends.php:100
+      Illuminate\Database\Eloquent\Relations\BelongsToMany::syncWithoutDetaching()
+
+  15  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:517
+      Illuminate\Database\Migrations\Migration@anonymous\C:\Tar College\Project web\ELV\elv-be\database\migrations\2026_02_24_015941_seed_gf_bss_legends.php:8$f9::up()
+
+  16  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:442
+      Illuminate\Database\Migrations\Migrator::runMethod(Object(Illuminate\Database\PostgresConnection), Object(Illuminate\Database\Migrations\Migration@anonymous\C:\Tar College\Project web\ELV\elv-be\database\migrations\2026_02_24_015941_seed_gf_bss_legends.php:8$f9), "up")
+
+  17  vendor\laravel\framework\src\Illuminate\Database\Concerns\ManagesTransactions.php:35
+      Illuminate\Database\Migrations\Migrator::{closure:Illuminate\Database\Migrations\Migrator::runMigration():438}(Object(Illuminate\Database\PostgresConnection))
+
+  18  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:450
+      Illuminate\Database\Connection::transaction(Object(Closure))
+
+  19  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+      Illuminate\Database\Migrations\Migrator::runMigration(Object(Illuminate\Database\Migrations\Migration@anonymous\C:\Tar College\Project web\ELV\elv-be\database\migrations\2026_02_24_015941_seed_gf_bss_legends.php:8$f9), "up")
+
+  20  vendor\laravel\framework\src\Illuminate\Console\View\Components\Task.php:41
+      Illuminate\Database\Migrations\Migrator::{closure:Illuminate\Database\Migrations\Migrator::runUp():253}()
+
+  21  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:814
+      Illuminate\Console\View\Components\Task::render("2026_02_24_015941_seed_gf_bss_legends", Object(Closure))
+
+  22  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:253
+      Illuminate\Database\Migrations\Migrator::write("Illuminate\Console\View\Components\Task", "2026_02_24_015941_seed_gf_bss_legends", Object(Closure))
+
+  23  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:211
+      Illuminate\Database\Migrations\Migrator::runUp("C:\Tar College\Project web\ELV\elv-be\database\migrations/2026_02_24_015941_seed_gf_bss_legends.php")
+
+  24  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:138
+      Illuminate\Database\Migrations\Migrator::runPending([])
+
+  25  vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:116
+      Illuminate\Database\Migrations\Migrator::run([])
+
+  26  vendor\laravel\framework\src\Illuminate\Database\Migrations\Migrator.php:671
+      Illuminate\Database\Console\Migrations\MigrateCommand::{closure:Illuminate\Database\Console\Migrations\MigrateCommand::runMigrations():109}()
+
+  27  vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:109
+      Illuminate\Database\Migrations\Migrator::usingConnection(Object(Closure))
+
+  28  vendor\laravel\framework\src\Illuminate\Database\Console\Migrations\MigrateCommand.php:88
+      Illuminate\Database\Console\Migrations\MigrateCommand::runMigrations()
+
+  29  vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+      Illuminate\Database\Console\Migrations\MigrateCommand::handle()
+
+  30  vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+      Illuminate\Container\BoundMethod::{closure:Illuminate\Container\BoundMethod::call():35}()
+
+  31  vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+      Illuminate\Container\Util::unwrapIfClosure(Object(Closure))
+
+  32  vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+      Illuminate\Container\BoundMethod::callBoundMethod(Object(Illuminate\Foundation\Application), Object(Closure))
+
+  33  vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+      Illuminate\Container\BoundMethod::call(Object(Illuminate\Foundation\Application), [])
+
+  34  vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+      Illuminate\Container\Container::call()
+
+  35  vendor\symfony\console\Command\Command.php:341
+      Illuminate\Console\Command::execute(Object(Symfony\Component\Console\Input\ArgvInput), Object(Illuminate\Console\OutputStyle))
+
+  36  vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+      Symfony\Component\Console\Command\Command::run(Object(Symfony\Component\Console\Input\ArgvInput), Object(Illuminate\Console\OutputStyle))
+
+  37  vendor\symfony\console\Application.php:1102
+      Illuminate\Console\Command::run(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  38  vendor\symfony\console\Application.php:356
+      Symfony\Component\Console\Application::doRunCommand(Object(Illuminate\Database\Console\Migrations\MigrateCommand), Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  39  vendor\symfony\console\Application.php:195
+      Symfony\Component\Console\Application::doRun(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  40  vendor\laravel\framework\src\Illuminate\Foundation\Console\Kernel.php:198
+      Symfony\Component\Console\Application::run(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  41  vendor\laravel\framework\src\Illuminate\Foundation\Application.php:1235
+      Illuminate\Foundation\Console\Kernel::handle(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  42  artisan:16
+      Illuminate\Foundation\Application::handleCommand(Object(Symfony\Component\Console\Input\ArgvInput))
+

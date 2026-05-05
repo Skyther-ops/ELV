@@ -31,7 +31,7 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|unique:users,email',
             'password' => ['required', 'string', Password::defaults()],
-            'role' => 'required|in:member,supervisor,facilitator',
+            'role' => 'required|in:member,supervisor,facilitator,businesses,superadmin,admin',
         ]);
 
         $user = User::create([
@@ -59,6 +59,9 @@ class UserController extends Controller
         }
 
         if ($request->has('role')) {
+            $request->validate([
+                'role' => 'in:member,supervisor,facilitator,businesses,superadmin,admin'
+            ]);
             $user->role = $request->role;
         }
 
@@ -76,8 +79,8 @@ class UserController extends Controller
     public function destroy(Request $request, $id)
     {
         $requester = $request->user();
-        if ($requester->role !== 'supervisor') {
-            return response()->json(['message' => 'Unauthorized. Only supervisors can delete users.'], 403);
+        if (!in_array($requester->role, ['supervisor', 'superadmin', 'admin'])) {
+            return response()->json(['message' => 'Unauthorized. Only supervisors and admins can delete users.'], 403);
         }
 
         if ((string) $requester->id === (string) $id) {

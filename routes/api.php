@@ -17,6 +17,17 @@ use App\Http\Controllers\Api\TechnicalLayoutController;
 Route::post('/register', [AuthController::class , 'register']);
 Route::post('/login', [AuthController::class , 'login']);
 
+// Public file serving (storage files are on the public disk, accessible without auth)
+Route::get('/storage/{path}', function ($path) {
+    $fullPath = storage_path('app/public/' . $path);
+    if (!file_exists($fullPath)) abort(404);
+    return response()->file($fullPath, [
+        'Access-Control-Allow-Origin' => '*',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+})->where('path', '.*');
+
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class , 'me']);
     
@@ -26,12 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/users/{id}', [\App\Http\Controllers\Api\UserController::class, 'update']);
     Route::delete('/users/{id}', [\App\Http\Controllers\Api\UserController::class, 'destroy']);
 
-    // CORS Fix for images
-    Route::get('/storage/{path}', function ($path) {
-        $fullPath = storage_path('app/public/' . $path);
-        if (!file_exists($fullPath)) abort(404);
-        return response()->file($fullPath, ['Access-Control-Allow-Origin' => '*']);
-    })->where('path', '.*');
+
 
     Route::get('/online-users', [AuthController::class , 'onlineUsers']);
 
@@ -55,12 +61,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/user-projects', [UserProjectController::class, 'store']);
     Route::delete('/user-projects/{id}', [UserProjectController::class, 'destroy']);
 
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+
     // ── Business Module: Tenders ──────────────────────────────────────
     Route::get('/tenders', [\App\Http\Controllers\Api\TenderController::class, 'index']);
     Route::get('/tenders/{id}', [\App\Http\Controllers\Api\TenderController::class, 'show']);
     Route::post('/tenders', [\App\Http\Controllers\Api\TenderController::class, 'store']);
     Route::put('/tenders/{id}', [\App\Http\Controllers\Api\TenderController::class, 'update']);
     Route::delete('/tenders/{id}', [\App\Http\Controllers\Api\TenderController::class, 'destroy']);
+    Route::post('/tenders/{id}/upload-files', [\App\Http\Controllers\Api\TenderController::class, 'uploadFiles']);
+    Route::delete('/tenders/{id}/files', [\App\Http\Controllers\Api\TenderController::class, 'deleteFile']);
+    Route::post('/tenders/{id}/request-verification', [\App\Http\Controllers\Api\TenderController::class, 'requestVerification']);
+    Route::post('/tenders/{id}/verify', [\App\Http\Controllers\Api\TenderController::class, 'verify']);
+    Route::post('/tenders/{id}/approve', [\App\Http\Controllers\Api\TenderController::class, 'approve']);
 
     Route::get('/tenders/{tenderId}/costing-items', [\App\Http\Controllers\Api\TenderCostingItemController::class, 'index']);
     Route::post('/tenders/{tenderId}/costing-items', [\App\Http\Controllers\Api\TenderCostingItemController::class, 'store']);
@@ -73,6 +89,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/master-list/{id}', [\App\Http\Controllers\Api\MasterListController::class, 'update']);
     Route::delete('/master-list/{id}', [\App\Http\Controllers\Api\MasterListController::class, 'destroy']);
     Route::post('/master-list/seed', [\App\Http\Controllers\Api\MasterListController::class, 'seed']);
+
+    // ── Business Module: License Tracking ─────────────────────────────
+    Route::get('/licenses', [\App\Http\Controllers\Api\LicenseController::class, 'index']);
+    Route::get('/licenses/{id}', [\App\Http\Controllers\Api\LicenseController::class, 'show']);
+    Route::post('/licenses', [\App\Http\Controllers\Api\LicenseController::class, 'store']);
+    Route::put('/licenses/{id}', [\App\Http\Controllers\Api\LicenseController::class, 'update']);
+    Route::delete('/licenses/{id}', [\App\Http\Controllers\Api\LicenseController::class, 'destroy']);
+    Route::post('/licenses/{id}/acknowledge', [\App\Http\Controllers\Api\LicenseController::class, 'acknowledge']);
+    Route::post('/licenses/{id}/complete', [\App\Http\Controllers\Api\LicenseController::class, 'complete']);
+    Route::post('/licenses/{id}/request-verification', [\App\Http\Controllers\Api\LicenseController::class, 'requestVerification']);
+    Route::post('/licenses/{id}/verify', [\App\Http\Controllers\Api\LicenseController::class, 'verify']);
+    Route::post('/licenses/{id}/approve', [\App\Http\Controllers\Api\LicenseController::class, 'approve']);
 
     // Project-Scoped Routes (Require X-Project-Id header)
     Route::middleware('project.scope')->group(function () {
