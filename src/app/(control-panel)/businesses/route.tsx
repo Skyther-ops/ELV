@@ -12,39 +12,38 @@ const routes: FuseRouteItemType[] = [
     {
         path: 'businesses',
         element: <TenderDashboardPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     },
     {
         path: 'businesses/dashboard',
         element: <TenderDashboardPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     },
     {
         path: 'businesses/tenders',
         element: <TendersPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     },
     {
         path: 'businesses/master-list',
         element: <MasterListPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     },
     {
         path: 'businesses/project-master-list',
         element: <ProjectMasterListPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     },
     {
         path: 'businesses/tenders/:id/costing',
         element: <TenderCostingPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     },
     {
         path: 'businesses/license-tracking',
         element: <LicenseTrackingPage />,
-        auth: ['businesses', 'superadmin', 'admin', 'supervisor']
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     }
 ];
 
 export default routes;
-

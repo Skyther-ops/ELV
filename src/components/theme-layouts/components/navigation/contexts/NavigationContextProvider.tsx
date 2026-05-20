@@ -17,7 +17,7 @@ export function NavigationContextProvider({ children }: { children: ReactNode })
 		const role = authState?.user?.role;
 		if (!role) return false;
 		const roles = Array.isArray(role) ? role : [role];
-		return roles.some(r => typeof r === 'string' && r.toLowerCase() === 'businesses');
+		return roles.some(r => typeof r === 'string' && ['businesses', 'business_admin', 'business_higher_admin'].includes(r.toLowerCase()));
 	}, [authState?.user?.role]);
 
 	const filteredNavigationConfig = useMemo(() => {
@@ -25,7 +25,13 @@ export function NavigationContextProvider({ children }: { children: ReactNode })
 		const baseItems = navigationConfig.filter(item => item.id === 'switch-system');
 		
 		if (isBusinessUser) {
-			// Business users only see their own group + Switch System
+			const role = authState?.user?.role;
+			const roles = Array.isArray(role) ? role : [role];
+			const isBusinessManager = roles.some(r => ['business_admin', 'business_higher_admin'].includes(String(r).toLowerCase()));
+
+			if (isBusinessManager) {
+				return navigationConfig.filter(item => ['businesses-group', 'management-group', 'switch-system'].includes(item.id));
+			}
 			return navigationConfig.filter(item => ['businesses-group', 'switch-system'].includes(item.id));
 		}
 

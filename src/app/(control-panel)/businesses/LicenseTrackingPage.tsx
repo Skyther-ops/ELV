@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import api from '@/utils/api';
 import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -284,6 +285,7 @@ function WarningDialog({ licenses, open, onClose, onAcknowledge }: {
 
 export default function LicenseTrackingPage() {
     const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const { user: currentUser } = useAuth();
     const role = (currentUser as any)?.role;
     const userRoles = Array.isArray(role) ? role : [role];
@@ -436,10 +438,19 @@ export default function LicenseTrackingPage() {
     if (loading) return <Box sx={{display:'flex',justifyContent:'center',py:8}}><CircularProgress/></Box>;
 
     return (
-        <Box sx={{display:'flex',flexDirection:'column',height:'100%',overflow:'hidden',bgcolor:'background.default'}}>
+        <Box sx={{
+            display: 'flex', flexDirection: 'column',
+            height: '100%', overflow: 'hidden',
+            background: isDark 
+                ? 'linear-gradient(135deg, #0b0f19 0%, #1e1b4b 100%)' 
+                : 'linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 100%)',
+        }}>
             {/* Header */}
             <motion.div initial={{opacity:0,y:-12}} animate={{opacity:1,y:0}} transition={{duration:0.35}}>
-                <Box sx={{px:3,py:2.5,display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:'1px solid',borderColor:'divider',flexWrap:'wrap',gap:2}}>
+                <Box sx={{ px: 3, py: 2.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                           borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap', gap: 2,
+                           bgcolor: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(255, 255, 255, 0.5)',
+                           backdropFilter: 'blur(8px)' }}>
                     <Box>
                         <Typography variant="h5" fontWeight={800} letterSpacing="-0.5px">License Tracking</Typography>
                         <Typography variant="caption" color="text.secondary" sx={{mt:0.25,display:'block'}}>
@@ -476,114 +487,206 @@ export default function LicenseTrackingPage() {
             </motion.div>
 
             {/* Table */}
-            <Box sx={{flex:1,overflow:'auto'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',minWidth:1400}}>
-                    <thead>
-                        <tr>
-                            <th style={{width:50,background:'linear-gradient(180deg,#1e3a5f,#1a3354)',color:'#fff',fontWeight:700,fontSize:11,padding:'0 8px',height:40,position:'sticky',top:0,zIndex:3,borderRight:'1px solid rgba(255,255,255,0.1)'}}>#</th>
-                            {COLS.map(c=>(
-                                <th key={c.id} onClick={()=>handleSort(c.id)} style={{
-                                    minWidth:c.w,width:c.w,background:'linear-gradient(180deg,#1e3a5f,#1a3354)',color:'#fff',fontWeight:700,fontSize:11,
-                                    letterSpacing:'0.03em',textTransform:'uppercase',padding:'0 8px',height:40,whiteSpace:'nowrap',
-                                    position:'sticky',top:0,zIndex:3,borderRight:'1px solid rgba(255,255,255,0.1)',cursor:'pointer',userSelect:'none',
-                                }}>
-                                    <div style={{display:'flex',alignItems:'center',gap:4}}>
-                                        <span>{c.label}</span>
-                                        <SwapVertIcon fontSize="inherit" sx={{fontSize:14,opacity:sortKey===c.id?1:0.35,color:sortKey===c.id?'#60a5fa':'#fff'}}/>
-                                    </div>
-                                </th>
-                            ))}
-                            <th style={{width:140,background:'linear-gradient(180deg,#1e3a5f,#1a3354)',color:'#fff',fontWeight:700,fontSize:11,padding:'0 8px',height:40,position:'sticky',top:0,zIndex:3}}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filtered.length === 0 ? (
-                            <tr><td colSpan={COLS.length+2} style={{textAlign:'center',padding:40,color:'#9ca3af'}}>No licenses found</td></tr>
-                        ) : filtered.map((row, idx) => {
-                            const isWarning = row.daysRemaining !== null && row.daysRemaining <= 14;
-                            const isExpired = row.daysRemaining !== null && row.daysRemaining <= 0;
-                            return (
-                                <tr key={row.id} style={{
-                                    borderBottom:'1px solid',borderColor:theme.palette.divider,
-                                    background: isExpired ? alpha('#dc2626',0.06) : isWarning ? alpha('#f59e0b',0.04) : (idx%2===0?'transparent':alpha('#000',0.015)),
-                                    transition:'background 0.15s',
-                                }}>
-                                    <td style={{padding:'0 8px',height:38,fontSize:11,fontWeight:600,color:'#9ca3af',textAlign:'center'}}>{idx+1}</td>
-                                    {COLS.map(c=>{
-                                        const val = (row as any)[c.id];
-                                        if (c.id === 'daysRemaining') {
-                                            const color = getDaysColor(val);
-                                            const label = val === null ? 'No Expiry Set' : val <= 0 ? 'EXPIRED' : `${val} Days`;
-                                            return (
-                                                <td key={c.id} style={{padding:'0 8px',height:38}}>
-                                                    <Chip label={label} size="small"
-                                                        sx={{fontWeight:800,fontSize:10,height:22,bgcolor:alpha(color,0.12),color,
-                                                            animation: val!==null && val<=14 ? 'pulse 2s infinite' : 'none',
-                                                            '@keyframes pulse':{'0%,100%':{opacity:1},'50%':{opacity:0.6}}}}/>
-                                                </td>
-                                            );
-                                        }
-                                        if (c.id === 'validityPeriod') {
-                                            return (
-                                                <td key={c.id} style={{padding:'0 8px',height:38,fontSize:12,fontWeight:600,color:theme.palette.text.primary}}>
-                                                    {val ? `${val} Days` : <span style={{color:'#9ca3af'}}>—</span>}
-                                                </td>
-                                            );
-                                        }
-                                        if (c.id === 'company') {
-                                            return <td key={c.id} style={{padding:'0 8px',height:38}}>
-                                                <Chip label={val||'—'} size="small" sx={{fontWeight:700,fontSize:10,height:20,bgcolor:alpha('#6366f1',0.1),color:'#6366f1'}}/>
-                                            </td>;
-                                        }
-                                        return (
-                                            <td key={c.id} style={{padding:'0 8px',height:38,fontSize:12,fontWeight:500,color:theme.palette.text.primary,
-                                                overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:c.w}}>
-                                                <Tooltip title={val||''}><span>{val||<span style={{color:'#9ca3af'}}>—</span>}</span></Tooltip>
+            <Box sx={{ flex: 1, overflow: 'auto', p: 3, bgcolor: 'transparent' }}>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} style={{ height: '100%' }}>
+                    <Paper elevation={0} sx={{ 
+                        borderRadius: 3, 
+                        border: '1px solid', 
+                        borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(99,102,241,0.12)', 
+                        overflow: 'hidden', 
+                        boxShadow: isDark 
+                            ? '0 10px 30px -10px rgba(0,0,0,0.5)' 
+                            : '0 10px 30px -10px rgba(99,102,241,0.15)',
+                        bgcolor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.85)',
+                        backdropFilter: 'blur(16px)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <Box sx={{ flex: 1, overflow: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, minWidth: 1400 }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ 
+                                            width: 50, 
+                                            background: isDark ? '#1e293b' : '#f1f5f9', 
+                                            color: isDark ? '#94a3b8' : '#475569', 
+                                            fontWeight: 700, fontSize: 11, padding: '12px 16px', height: 48, 
+                                            position: 'sticky', top: 0, zIndex: 3, 
+                                            borderRight: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
+                                            borderBottom: `2px solid ${theme.palette.divider}`,
+                                            textAlign: 'center'
+                                        }}>#</th>
+                                        {COLS.map(c => (
+                                            <th key={c.id} onClick={() => handleSort(c.id)} style={{
+                                                minWidth: c.w, width: c.w,
+                                                background: isDark ? '#1e293b' : '#f1f5f9',
+                                                color: isDark ? '#94a3b8' : '#475569',
+                                                fontWeight: 700, fontSize: 11,
+                                                letterSpacing: '0.05em', textTransform: 'uppercase',
+                                                padding: '12px 16px', height: 48, whiteSpace: 'nowrap',
+                                                position: 'sticky', top: 0, zIndex: 3,
+                                                borderRight: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
+                                                borderBottom: `2px solid ${theme.palette.divider}`,
+                                                cursor: 'pointer', userSelect: 'none',
+                                                textAlign: 'left',
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <span>{c.label}</span>
+                                                    <SwapVertIcon fontSize="inherit" sx={{ fontSize: 14, opacity: sortKey === c.id ? 1 : 0.35, color: sortKey === c.id ? '#2563eb' : (isDark ? '#94a3b8' : '#475569') }} />
+                                                </div>
+                                            </th>
+                                        ))}
+                                        <th style={{ 
+                                            width: 180, 
+                                            background: isDark ? '#1e293b' : '#f1f5f9', 
+                                            color: isDark ? '#94a3b8' : '#475569', 
+                                            fontWeight: 700, fontSize: 11, padding: '12px 16px', height: 48, 
+                                            position: 'sticky', top: 0, zIndex: 3,
+                                            borderBottom: `2px solid ${theme.palette.divider}`,
+                                            borderLeft: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
+                                            textAlign: 'center'
+                                        }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={COLS.length + 2} style={{ textAlign: 'center', padding: '80px 24px', color: theme.palette.text.disabled }}>
+                                                No licenses found
                                             </td>
+                                        </tr>
+                                    ) : filtered.map((row, idx) => {
+                                        const isWarning = row.daysRemaining !== null && row.daysRemaining <= 14;
+                                        const isExpired = row.daysRemaining !== null && row.daysRemaining <= 0;
+                                        return (
+                                            <tr key={row.id} style={{
+                                                borderBottom: `1px solid ${theme.palette.divider}`,
+                                                background: isExpired ? alpha('#dc2626', 0.04) : isWarning ? alpha('#f59e0b', 0.03) : 'transparent',
+                                                transition: 'background-color 0.15s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isExpired && !isWarning) {
+                                                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(37,99,235,0.03)' : 'rgba(37,99,235,0.015)';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isExpired && !isWarning) {
+                                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                                }
+                                            }}
+                                            >
+                                                <td style={{ 
+                                                    padding: '12px 16px', fontSize: 11, fontWeight: 700, 
+                                                    color: theme.palette.text.secondary, textAlign: 'center',
+                                                    borderRight: `1px solid ${theme.palette.divider}`
+                                                }}>{idx + 1}</td>
+                                                {COLS.map(c => {
+                                                    const val = (row as any)[c.id];
+                                                    if (c.id === 'daysRemaining') {
+                                                        const color = getDaysColor(val);
+                                                        const label = val === null ? 'No Expiry Set' : val <= 0 ? 'EXPIRED' : `${val} Days`;
+                                                        return (
+                                                            <td key={c.id} style={{ padding: '12px 16px' }}>
+                                                                <Chip label={label} size="small"
+                                                                    sx={{
+                                                                        fontWeight: 800, fontSize: 10, height: 22, bgcolor: alpha(color, 0.12), color, borderRadius: 1.5,
+                                                                        animation: val !== null && val <= 14 ? 'pulse 2s infinite' : 'none',
+                                                                        '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.6 } }
+                                                                    }} />
+                                                            </td>
+                                                        );
+                                                    }
+                                                    if (c.id === 'validityPeriod') {
+                                                        return (
+                                                            <td key={c.id} style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: theme.palette.text.primary }}>
+                                                                {val ? `${val} Days` : <span style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)', fontStyle: 'italic', fontWeight: 300 }}>—</span>}
+                                                            </td>
+                                                        );
+                                                    }
+                                                    if (c.id === 'company') {
+                                                        return (
+                                                            <td key={c.id} style={{ padding: '12px 16px' }}>
+                                                                <Chip label={val || '—'} size="small" sx={{ fontWeight: 700, fontSize: 10, height: 20, bgcolor: alpha('#6366f1', 0.1), color: '#6366f1', borderRadius: 1.5 }} />
+                                                            </td>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <td key={c.id} style={{
+                                                            padding: '12px 16px', fontSize: 12, fontWeight: 500, color: theme.palette.text.primary,
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: c.w
+                                                        }}>
+                                                            <Tooltip title={val || ''}><span>{val || <span style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)', fontStyle: 'italic', fontWeight: 300 }}>—</span>}</span></Tooltip>
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td style={{ 
+                                                    padding: '12px 16px', textAlign: 'center', whiteSpace: 'nowrap', 
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5,
+                                                    borderLeft: `1px solid ${theme.palette.divider}`
+                                                }}>
+                                                    {(() => {
+                                                        const role = (currentUser as any)?.role;
+                                                        const vStatus = row.verification_status;
+                                                        return (
+                                                            <>
+                                                                {(!vStatus || vStatus === 'draft') && (
+                                                                    <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(row.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap' }}>
+                                                                        Request Approval
+                                                                    </Button>
+                                                                )}
+                                                                {(vStatus === 'pending_supervisor') && (role === 'supervisor' || role === 'superadmin') && (
+                                                                    <Button size="small" variant="contained" color="secondary" onClick={() => handleVerification(row.id, 'verify')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, boxShadow: 'none', whiteSpace: 'nowrap' }}>
+                                                                        Verify License
+                                                                    </Button>
+                                                                )}
+                                                                {(vStatus === 'pending_superadmin' || (vStatus === 'pending_supervisor' && role === 'superadmin')) && role === 'superadmin' && (
+                                                                    <Button size="small" variant="contained" color="success" onClick={() => handleVerification(row.id, 'approve')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, boxShadow: 'none', whiteSpace: 'nowrap' }}>
+                                                                        Approve License
+                                                                    </Button>
+                                                                )}
+                                                                {vStatus === 'approved' && (
+                                                                    <Chip size="small" label="Approved" color="success" variant="outlined" sx={{ height: 20, fontSize: 10, borderRadius: 1 }} />
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
+                                                    {row.completed && (
+                                                        <Chip label="Completed" size="small" icon={<CheckCircleIcon sx={{ fontSize: 14 }} />} sx={{ fontWeight: 700, fontSize: 10, height: 22, bgcolor: alpha('#10b981', 0.12), color: '#10b981', borderRadius: 1.5, '& .MuiChip-icon': { color: '#10b981' } }} />
+                                                    )}
+                                                    {!isSuperAdmin && (
+                                                        <Tooltip title="Edit">
+                                                            <IconButton size="small" onClick={() => { setEditItem(row); setDialogOpen(true); }} sx={{
+                                                                color: '#2563eb',
+                                                                bgcolor: alpha('#2563eb', 0.08),
+                                                                '&:hover': { bgcolor: alpha('#2563eb', 0.15) },
+                                                                width: 28, height: 28, borderRadius: 1.5
+                                                            }}>
+                                                                <EditIcon sx={{ fontSize: 15 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                    {!isSuperAdmin && (
+                                                        <Tooltip title="Delete">
+                                                            <IconButton size="small" onClick={() => handleDelete(row.id)} sx={{
+                                                                color: '#ef4444',
+                                                                bgcolor: alpha('#ef4444', 0.08),
+                                                                '&:hover': { bgcolor: alpha('#ef4444', 0.15) },
+                                                                width: 28, height: 28, borderRadius: 1.5
+                                                            }}>
+                                                                <DeleteIcon sx={{ fontSize: 15 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                </td>
+                                            </tr>
                                         );
                                     })}
-                                    <td style={{padding:'0 4px',height:38,textAlign:'center',whiteSpace:'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                        {(() => {
-                                            const role = (currentUser as any)?.role;
-                                            const vStatus = row.verification_status;
-                                            return (
-                                                <>
-                                                    {(!vStatus || vStatus === 'draft') && (
-                                                        <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(row.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap', mr: 1 }}>
-                                                            Request Approval
-                                                        </Button>
-                                                    )}
-                                                    {(vStatus === 'pending_supervisor') && (role === 'supervisor' || role === 'superadmin') && (
-                                                        <Button size="small" variant="contained" color="secondary" onClick={() => handleVerification(row.id, 'verify')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, boxShadow: 'none', whiteSpace: 'nowrap', mr: 1 }}>
-                                                            Verify License
-                                                        </Button>
-                                                    )}
-                                                    {(vStatus === 'pending_superadmin' || (vStatus === 'pending_supervisor' && role === 'superadmin')) && role === 'superadmin' && (
-                                                        <Button size="small" variant="contained" color="success" onClick={() => handleVerification(row.id, 'approve')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, boxShadow: 'none', whiteSpace: 'nowrap', mr: 1 }}>
-                                                            Approve License
-                                                        </Button>
-                                                    )}
-                                                    {vStatus === 'approved' && (
-                                                        <Chip size="small" label="Approved" color="success" variant="outlined" sx={{ height: 20, fontSize: 10, mr: 1 }} />
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
-                                        {row.completed && (
-                                            <Chip label="Completed" size="small" icon={<CheckCircleIcon sx={{fontSize:14}}/>} sx={{fontWeight:700,fontSize:10,height:22,bgcolor:alpha('#10b981',0.12),color:'#10b981','& .MuiChip-icon':{color:'#10b981'}, mr: 1}}/>
-                                        )}
-                                        {!isSuperAdmin && (
-                                            <Tooltip title="Edit"><IconButton size="small" onClick={()=>{setEditItem(row);setDialogOpen(true);}} sx={{color:'text.secondary','&:hover':{color:'#2563eb'}}}><EditIcon sx={{fontSize:15}}/></IconButton></Tooltip>
-                                        )}
-                                        {!isSuperAdmin && (
-                                            <Tooltip title="Delete"><IconButton size="small" onClick={()=>handleDelete(row.id)} sx={{color:'text.disabled','&:hover':{color:'#ef4444'}}}><DeleteIcon sx={{fontSize:15}}/></IconButton></Tooltip>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                </tbody>
+                            </table>
+                        </Box>
+                    </Paper>
+                </motion.div>
             </Box>
 
             {/* Dialogs */}

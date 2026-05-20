@@ -5,10 +5,12 @@ import ElectricalServicesIcon from '@mui/icons-material/ElectricalServices';
 import LaptopMacIcon from '@mui/icons-material/LaptopMac';
 import BusinessIcon from '@mui/icons-material/Business';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import { useProject } from '@/context/ProjectContext';
 
 function PortalPage() {
     const { data: user } = useUser();
     const navigate = useNavigate();
+    const { setViewMode } = useProject();
 
     const userRoleStr = typeof user?.role === 'string' ? user.role : (Array.isArray(user?.role) ? user.role[0] : 'user');
     const roleLower = String(userRoleStr || 'user').toLowerCase();
@@ -17,13 +19,15 @@ function PortalPage() {
     const isSupervisor = ['supervisor', 'admin'].includes(roleLower) || isSuperAdmin;
     const isFacilitator = roleLower === 'facilitator';
     const isMember = roleLower === 'member';
-    const isBusiness = roleLower === 'businesses';
+    const isBusiness = ['businesses', 'business_admin', 'business_higher_admin'].includes(roleLower);
     const isIct = roleLower === 'ict';
 
     // Display role name based on user data
     let displayRole = 'User';
     if (isSuperAdmin) displayRole = 'Super Admin';
     else if (isSupervisor) displayRole = 'System Supervisor';
+    else if (roleLower === 'business_admin') displayRole = 'Business Admin';
+    else if (roleLower === 'business_higher_admin') displayRole = 'Business Higher Admin';
     else if (isBusiness) displayRole = 'Business Partner';
     else if (isFacilitator) displayRole = 'SSDC Facilitator';
     else if (isMember) displayRole = 'Team Member';
@@ -127,7 +131,7 @@ function PortalPage() {
                                 {sys.hasAccess ? (
                                     <button
                                         onClick={() => {
-                                            localStorage.setItem('navbarViewMode', sys.id);
+                                            setViewMode(sys.id as any);
                                             navigate(sys.route);
                                         }}
                                         className={`w-full py-3 rounded-xl font-bold text-white text-sm tracking-wider uppercase transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95`}

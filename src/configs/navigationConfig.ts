@@ -18,7 +18,7 @@ const navigationConfig: FuseNavItemType[] = [
 		type: 'item',
 		icon: 'heroicons-outline:squares-2x2',
 		url: 'portal',
-		auth: ['supervisor', 'superadmin', 'admin', 'member', 'facilitator']
+		auth: ['supervisor', 'superadmin', 'admin', 'member', 'facilitator', 'businesses', 'business_admin', 'business_higher_admin']
 	},
 	{
 		id: 'inventory-group',
@@ -261,7 +261,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Management',
 		type: 'group',
 		icon: 'heroicons-outline:cog',
-		auth: ['supervisor', 'superadmin', 'admin'],
+		auth: ['supervisor', 'superadmin', 'admin', 'business_admin', 'business_higher_admin'],
 		children: [
 			{
 				id: 'user-management',
@@ -277,7 +277,7 @@ const navigationConfig: FuseNavItemType[] = [
 		title: 'Business Management',
 		type: 'group',
 		icon: 'heroicons-outline:briefcase',
-		auth: ['businesses', 'superadmin', 'admin', 'supervisor'],
+		auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin'],
 		children: [
 			{
 				id: 'business-dashboard',

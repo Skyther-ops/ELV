@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import api from '@/utils/api';
 import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -105,22 +106,27 @@ function HeaderCell({ col, sortKey, sortDir, onSort }: {
     col: typeof COLUMNS[0]; sortKey: string; sortDir: 'asc' | 'desc'; onSort: (id: string) => void;
 }) {
     const active = sortKey === col.id;
+    const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     return (
         <th onClick={() => onSort(col.id)} style={{
             minWidth: col.width, width: col.width,
-            background: 'linear-gradient(180deg, #1e3a5f 0%, #1a3354 100%)',
-            color: '#fff', fontWeight: 700, fontSize: 11,
-            letterSpacing: '0.03em', textTransform: 'uppercase',
-            padding: '0 8px', height: 40, whiteSpace: 'nowrap',
+            background: isDark ? '#1e293b' : '#f1f5f9',
+            color: isDark ? '#94a3b8' : '#475569',
+            fontWeight: 700, fontSize: 11,
+            letterSpacing: '0.05em', textTransform: 'uppercase',
+            padding: '12px 16px', height: 48, whiteSpace: 'nowrap',
             position: 'sticky', top: 0, zIndex: 3,
-            borderRight: '1px solid rgba(255,255,255,0.1)',
+            borderBottom: `2px solid ${theme.palette.divider}`,
+            borderRight: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
             cursor: 'pointer', userSelect: 'none',
+            transition: 'background-color 0.2s',
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span>{col.label}</span>
                 <SwapVertIcon fontSize="inherit" sx={{
                     fontSize: 14, opacity: active ? 1 : 0.35,
-                    color: active ? '#60a5fa' : '#fff',
+                    color: active ? '#2563eb' : (isDark ? '#94a3b8' : '#475569'),
                     transform: active && sortDir === 'desc' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.2s',
                 }} />
@@ -186,7 +192,7 @@ function FreeSoloInput({ label, value, onChange, history, type }: {
 function ChipAutocomplete({ label, value, onChange, items }: {
     label: string; value: string; onChange: (v: string) => void; items: MasterListItem[];
 }) {
-    const selected = items.find(i => i.label === value) ?? null;
+    const selected = items.find(i => i.label && value && i.label.toLowerCase() === value.toLowerCase()) ?? null;
     return (
         <Autocomplete
             fullWidth
@@ -196,7 +202,7 @@ function ChipAutocomplete({ label, value, onChange, items }: {
             value={selected}
             getOptionLabel={(option) => option.label}
             onChange={(_, newValue) => onChange(newValue?.label ?? '')}
-            isOptionEqualToValue={(option, val) => option.label === val.label}
+            isOptionEqualToValue={(option, val) => option.label?.toLowerCase() === val.label?.toLowerCase()}
             renderInput={(params) => (
                 <TextField
                     {...params}
@@ -233,8 +239,8 @@ function ChipAutocomplete({ label, value, onChange, items }: {
 function MultiChipAutocomplete({ label, value, onChange, items }: {
     label: string; value: string; onChange: (v: string) => void; items: MasterListItem[];
 }) {
-    const valueArray = useMemo(() => value ? value.split(',').map(v => v.trim()).filter(Boolean) : [], [value]);
-    const selected = useMemo(() => items.filter(i => valueArray.includes(i.label)), [items, valueArray]);
+    const valueArray = useMemo(() => value ? value.split(',').map(v => v.trim().toLowerCase()).filter(Boolean) : [], [value]);
+    const selected = useMemo(() => items.filter(i => i.label && valueArray.includes(i.label.toLowerCase())), [items, valueArray]);
 
     return (
         <Autocomplete
@@ -249,7 +255,7 @@ function MultiChipAutocomplete({ label, value, onChange, items }: {
                 const labels = newValue.map(v => v.label).join(', ');
                 onChange(labels);
             }}
-            isOptionEqualToValue={(option, val) => option.label === val.label}
+            isOptionEqualToValue={(option, val) => option.label?.toLowerCase() === val.label?.toLowerCase()}
             renderInput={(params) => (
                 <TextField
                     {...params}
@@ -309,7 +315,7 @@ function StatusChip({ value, items, showContactTooltip = false }: { value: strin
     return (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
             {values.map((v, idx) => {
-                const found = items.find(i => i.label === v);
+                const found = items.find(i => i.label && v && i.label.toLowerCase() === v.toLowerCase());
                 const chip = (
                     <Chip key={idx} label={v} size="small" sx={{
                         bgcolor: found?.color || 'transparent',
@@ -692,9 +698,9 @@ export default function TendersPage() {
     const currentUser = authState?.user;
     const role = (currentUser as any)?.role;
     const userRoles = Array.isArray(role) ? role : [role];
-    const isSuperAdmin = userRoles.includes('superadmin');
-    const isAdmin = userRoles.includes('admin');
-    const isSupervisor = userRoles.includes('supervisor');
+    const isSuperAdmin = userRoles.includes('business_higher_admin');
+    const isAdmin = userRoles.includes('business_higher_admin');
+    const isSupervisor = userRoles.includes('business_admin');
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
 
@@ -777,14 +783,14 @@ export default function TendersPage() {
                 if (!statusFilter) return true;
                 if (statusFilter === 'pending_verify_special') return t.verification_status === 'pending_supervisor';
                 if (statusFilter === 'pending_approve_special') return t.verification_status === 'pending_superadmin';
-                return t.status === statusFilter;
+                return t.status && statusFilter && t.status.toLowerCase() === statusFilter.toLowerCase();
             })
             .filter(t => !filters.startDate || (t.date && t.date >= filters.startDate))
             .filter(t => !filters.endDate || (t.date && t.date <= filters.endDate))
-            .filter(t => !filters.type || t.type === filters.type)
-            .filter(t => !filters.company || t.company === filters.company)
-            .filter(t => !filters.customer || t.customer === filters.customer)
-            .filter(t => !filters.agencyTypes || t.agencyTypes === filters.agencyTypes)
+            .filter(t => !filters.type || (t.type && filters.type && t.type.toLowerCase() === filters.type.toLowerCase()))
+            .filter(t => !filters.company || (t.company && filters.company && t.company.toLowerCase() === filters.company.toLowerCase()))
+            .filter(t => !filters.customer || (t.customer && filters.customer && t.customer.toLowerCase() === filters.customer.toLowerCase()))
+            .filter(t => !filters.agencyTypes || (t.agencyTypes && filters.agencyTypes && t.agencyTypes.toLowerCase() === filters.agencyTypes.toLowerCase()))
             .filter(t => !filters.projectTitle || (t.projectTitle && t.projectTitle.toLowerCase().includes(filters.projectTitle.toLowerCase())))
             .sort((a, b) => {
                 const av = (a as any)[sortKey] ?? '';
@@ -846,7 +852,7 @@ export default function TendersPage() {
             tenders: tenders
         };
         const otherTabs = (masterData?.status || []).map(s => {
-            const list = tenders.filter(t => t.status === s.label);
+            const list = tenders.filter(t => t.status && s.label && t.status.toLowerCase() === s.label.toLowerCase());
             return {
                 label: s.label,
                 value: s.label,
@@ -863,7 +869,9 @@ export default function TendersPage() {
         <Box sx={{
             display: 'flex', flexDirection: 'column',
             height: '100%', overflow: 'hidden',
-            bgcolor: 'background.default',
+            background: isDark 
+                ? 'linear-gradient(135deg, #0b0f19 0%, #1e1b4b 100%)' 
+                : 'linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 100%)',
         }}>
 
             {/* Page header */}
@@ -919,7 +927,7 @@ export default function TendersPage() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        style={{ overflow: 'hidden', borderBottom: `1px solid ${theme.palette.divider}`, background: isDark ? alpha('#fff', 0.02) : alpha('#000', 0.015) }}
+                        style={{ overflow: 'hidden', borderBottom: `1px solid ${theme.palette.divider}`, background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(8px)' }}
                     >
                         <Box sx={{ p: 2.5 }}>
                             <Grid container spacing={2} alignItems="flex-end">
@@ -964,7 +972,7 @@ export default function TendersPage() {
             </AnimatePresence>
 
             {/* Status Filter Bar */}
-            <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+            <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(255, 255, 255, 0.5)', backdropFilter: 'blur(8px)' }}>
                 <Box sx={{ display: 'flex', overflowX: 'auto', px: 3, gap: 3, '&::-webkit-scrollbar': { display: 'none' } }}>
                     {statusTabs.map((tab) => {
                         const active = statusFilter === tab.value;
@@ -1047,176 +1055,232 @@ export default function TendersPage() {
             </Box>
 
             {/* Table */}
-            <Box sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }}>
-                    <table style={{
-                        borderCollapse: 'collapse',
-                        width: '100%',
-                        tableLayout: 'fixed',
-                        minWidth: COLUMNS.reduce((a, c) => a + c.width, 36 + 64),
+            <Box sx={{ flex: 1, overflow: 'auto', minHeight: 0, p: 3, bgcolor: 'transparent' }}>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.1 }} style={{ height: '100%' }}>
+                    <Paper elevation={0} sx={{ 
+                        borderRadius: 3, 
+                        border: '1px solid', 
+                        borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(99,102,241,0.12)', 
+                        overflow: 'hidden', 
+                        boxShadow: isDark 
+                            ? '0 10px 30px -10px rgba(0,0,0,0.5)' 
+                            : '0 10px 30px -10px rgba(99,102,241,0.15)',
+                        bgcolor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.85)',
+                        backdropFilter: 'blur(16px)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column'
                     }}>
-                        <thead>
-                            <tr>
-                                {/* # */}
-                                <th style={{ minWidth: 36, width: 36,
-                                    background: 'linear-gradient(180deg, #1e3a5f 0%, #1a3354 100%)',
-                                    color: '#fff', fontWeight: 700, fontSize: 11, height: 40,
-                                    position: 'sticky', top: 0, left: 0, zIndex: 4,
-                                    borderRight: '1px solid rgba(255,255,255,0.15)', textAlign: 'center' }}>
-                                    #
-                                </th>
-                                {COLUMNS.map(col => (
-                                    <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                                ))}
-                                {/* Actions */}
-                                <th style={{ minWidth: 104, width: 104,
-                                    background: 'linear-gradient(180deg, #1e3a5f 0%, #1a3354 100%)',
-                                    color: '#fff', fontWeight: 700, fontSize: 11, height: 40,
-                                    position: 'sticky', top: 0, right: 0, zIndex: 4, textAlign: 'center',
-                                    borderLeft: '1px solid rgba(255,255,255,0.15)' }}>
-                                    ⋯
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.length === 0 ? (
-                                <tr>
-                                    <td colSpan={COLUMNS.length + 2} style={{ textAlign: 'center', padding: '80px 24px' }}>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
-                                            <Box sx={{ width: 64, height: 64, borderRadius: '50%',
-                                                background: 'linear-gradient(135deg, #1e3a5f22, #2563eb22)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                                                <AddIcon sx={{ fontSize: 28, color: '#2563eb', opacity: 0.6 }} />
-                                            </Box>
-                                            <Typography variant="h6" fontWeight={700} color="text.secondary">
-                                                {search ? 'No matching tenders' : 'No tenders yet'}
-                                            </Typography>
-                                            <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 320, textAlign: 'center' }}>
-                                                {search ? 'Try a different search term.' : <>Click <strong>Add Tender</strong> to create your first entry.</>}
-                                            </Typography>
-                                            {!search && (
-                                                <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openAdd}
-                                                    sx={{ mt: 1, fontWeight: 700, textTransform: 'none', borderRadius: 1.5, borderColor: '#2563eb', color: '#2563eb' }}>
-                                                    Add Tender
-                                                </Button>
-                                            )}
-                                        </Box>
-                                    </td>
-                                </tr>
-                            ) : filtered.map((tender, idx) => (
-                                <motion.tr
-                                    key={tender.id}
-                                    initial={{ opacity: 0, y: 4 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.15, delay: idx * 0.03 }}
-                                    style={{ background: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)') }}
-                                >
-                                    <td style={{ 
-                                        textAlign: 'center', fontSize: 12, color: theme.palette.text.secondary, padding: '8px 0', 
-                                        borderBottom: `1px solid ${theme.palette.divider}`, position: 'sticky', left: 0, 
-                                        background: idx % 2 === 0 ? theme.palette.background.default : (isDark ? '#1e293b' : '#f8fafc'), zIndex: 2, 
-                                        borderRight: `1px solid ${theme.palette.divider}` 
-                                    }}>{idx + 1}</td>
-                                    {COLUMNS.map(col => {
-                                        const val = (tender as any)[col.id];
-                                        const isMasterField = ['status', 'type', 'company', 'customer', 'supplier', 'agencyTypes'].includes(col.id);
-                                        const categoryMap: any = { status: 'status', type: 'type', company: 'company', customer: 'customer', supplier: 'supplier', agencyTypes: 'agencyTypes' };
-                                        const showTooltip = ['customer', 'supplier', 'company', 'agencyTypes'].includes(col.id);
-                                        const isLongText = ['projectTitle', 'email', 'personInCharge'].includes(col.id);
-                                        
-                                        return (
-                                            <td key={col.id} style={{
-                                                padding: '8px 12px', fontSize: 11,
-                                                color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`,
-                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                                maxWidth: col.width,
-                                            }}>
-                                                {isMasterField ? (
-                                                    <StatusChip value={val} items={(masterData as any)[categoryMap[col.id]]} showContactTooltip={showTooltip} />
-                                                ) : isLongText && val ? (
-                                                    <Tooltip title={val} arrow placement="top">
-                                                        <span style={{ 
-                                                            display: 'block', 
-                                                            overflow: 'hidden', 
-                                                            textOverflow: 'ellipsis', 
-                                                            whiteSpace: 'nowrap',
-                                                            cursor: 'default'
-                                                        }}>
-                                                            {val}
-                                                        </span>
-                                                    </Tooltip>
-                                                ) : (
-                                                    val || <span style={{ color: theme.palette.text.disabled }}>—</span>
-                                                )}
-                                            </td>
-                                        );
-                                    })}
-                                    <td style={{ 
-                                        padding: '4px 8px', borderBottom: `1px solid ${theme.palette.divider}`, textAlign: 'center',
-                                        position: 'sticky', right: 0, background: idx % 2 === 0 ? theme.palette.background.default : (isDark ? '#1e293b' : '#f8fafc'), 
-                                        zIndex: 2, borderLeft: `1px solid ${theme.palette.divider}`
-                                    }}>
-                                        {(() => {
-                                            const role = (currentUser as any)?.role;
-                                            const userRoles = Array.isArray(role) ? role : [role];
-                                            const isSuperAdmin = userRoles.includes('superadmin');
-                                            const isAdmin = userRoles.includes('admin');
-                                            const isSupervisor = userRoles.includes('supervisor');
-                                            
-                                            const isCreator = !tender.creator || 
-                                                (currentUser && tender.creator.id == (currentUser as any).id) || 
-                                                isAdmin;
-                                            
-                                            const vStatus = tender.verification_status;
-                                            
-                                            return (
-                                                <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
-                                                    {(!vStatus || vStatus === 'draft') && !isSupervisor && !isSuperAdmin && !isAdmin && (
-                                                        <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(tender.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap' }}>
-                                                            Request Verification
+                        <Box sx={{ flex: 1, overflow: 'auto' }}>
+                            <table style={{
+                                borderCollapse: 'separate',
+                                borderSpacing: 0,
+                                width: '100%',
+                                tableLayout: 'fixed',
+                                minWidth: COLUMNS.reduce((a, c) => a + c.width, 36 + 140),
+                            }}>
+                                <thead>
+                                    <tr>
+                                        {/* # */}
+                                        <th style={{ minWidth: 36, width: 36,
+                                            background: isDark ? '#1e293b' : '#f1f5f9',
+                                            color: isDark ? '#94a3b8' : '#475569', 
+                                            fontWeight: 700, fontSize: 11, height: 48,
+                                            position: 'sticky', top: 0, left: 0, zIndex: 4,
+                                            borderBottom: `2px solid ${theme.palette.divider}`,
+                                            borderRight: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)', 
+                                            textAlign: 'center' }}>
+                                            #
+                                        </th>
+                                        {COLUMNS.map(col => (
+                                            <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                                        ))}
+                                        {/* Actions */}
+                                        <th style={{ minWidth: 140, width: 140,
+                                            background: isDark ? '#1e293b' : '#f1f5f9',
+                                            color: isDark ? '#94a3b8' : '#475569', 
+                                            fontWeight: 700, fontSize: 11, height: 48,
+                                            position: 'sticky', top: 0, right: 0, zIndex: 4, textAlign: 'center',
+                                            borderBottom: `2px solid ${theme.palette.divider}`,
+                                            borderLeft: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                                            ⋯
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={COLUMNS.length + 2} style={{ textAlign: 'center', padding: '80px 24px' }}>
+                                                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1.5 }}>
+                                                    <Box sx={{ width: 64, height: 64, borderRadius: '50%',
+                                                        background: 'linear-gradient(135deg, #1e3a5f22, #2563eb22)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
+                                                        <AddIcon sx={{ fontSize: 28, color: '#2563eb', opacity: 0.6 }} />
+                                                    </Box>
+                                                    <Typography variant="h6" fontWeight={700} color="text.secondary">
+                                                        {search ? 'No matching tenders' : 'No tenders yet'}
+                                                    </Typography>
+                                                    <Typography variant="body2" color="text.disabled" sx={{ maxWidth: 320, textAlign: 'center' }}>
+                                                        {search ? 'Try a different search term.' : <>Click <strong>Add Tender</strong> to create your first entry.</>}
+                                                    </Typography>
+                                                    {!search && (
+                                                        <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={openAdd}
+                                                            sx={{ mt: 1, fontWeight: 700, textTransform: 'none', borderRadius: 1.5, borderColor: '#2563eb', color: '#2563eb' }}>
+                                                            Add Tender
                                                         </Button>
                                                     )}
-                                                    <IconButton size="small" color="primary" onClick={() => handleOpenReport(tender)} title="View Costing Report">
-                                                        <AssessmentIcon sx={{ fontSize: 18 }} />
-                                                    </IconButton>
-                                                    {vStatus === 'approved' && (
-                                                        <Chip size="small" label="Approved" color="success" variant="outlined" sx={{ height: 20, fontSize: 10 }} />
-                                                    )}
-                                                    <Tooltip title="Tender Costing">
-                                                        <IconButton size="small" onClick={() => navigate(`/businesses/tenders/${tender.id}/costing`)} sx={{ color: '#10b981' }}>
-                                                            <AttachMoneyIcon sx={{ fontSize: 16 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    {isCreator ? (
-                                                        <>
-                                                            <Tooltip title="Edit Tender">
-                                                                <IconButton size="small" onClick={() => openEdit(tender)} sx={{ color: '#2563eb' }}>
-                                                                    <EditIcon sx={{ fontSize: 15 }} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip title="Delete Tender">
-                                                                <IconButton size="small" onClick={() => handleDelete(tender.id)} sx={{ color: '#ef4444' }}>
-                                                                    <DeleteIcon sx={{ fontSize: 15 }} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </>
-                                                    ) : (
-                                                        <Tooltip title="View Only (Created by another user)">
-                                                            <span>
-                                                                <IconButton size="small" disabled sx={{ opacity: 0.3 }}>
-                                                                    <EditIcon sx={{ fontSize: 15 }} />
-                                                                </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    )}
                                                 </Box>
-                                            );
-                                        })()}
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                            </td>
+                                        </tr>
+                                    ) : filtered.map((tender, idx) => (
+                                        <motion.tr
+                                            key={tender.id}
+                                            initial={{ opacity: 0, y: 4 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.15, delay: idx * 0.03 }}
+                                            style={{ 
+                                                background: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.005)'),
+                                                transition: 'background-color 0.15s ease'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = isDark ? 'rgba(37,99,235,0.03)' : 'rgba(37,99,235,0.015)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.005)');
+                                            }}
+                                        >
+                                            <td style={{ 
+                                                textAlign: 'center', fontSize: 12, color: theme.palette.text.secondary, padding: '12px 16px', 
+                                                borderBottom: `1px solid ${theme.palette.divider}`, position: 'sticky', left: 0, 
+                                                background: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), zIndex: 2, 
+                                                borderRight: `1px solid ${theme.palette.divider}`,
+                                                transition: 'background-color 0.15s ease'
+                                            }}>{idx + 1}</td>
+                                            {COLUMNS.map(col => {
+                                                const val = (tender as any)[col.id];
+                                                const isMasterField = ['status', 'type', 'company', 'customer', 'supplier', 'agencyTypes'].includes(col.id);
+                                                const categoryMap: any = { status: 'status', type: 'type', company: 'company', customer: 'customer', supplier: 'supplier', agencyTypes: 'agencyTypes' };
+                                                const showTooltip = ['customer', 'supplier', 'company', 'agencyTypes'].includes(col.id);
+                                                const isLongText = ['projectTitle', 'email', 'personInCharge'].includes(col.id);
+                                                
+                                                return (
+                                                    <td key={col.id} style={{
+                                                        padding: '12px 16px', fontSize: 11,
+                                                        color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`,
+                                                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                        maxWidth: col.width,
+                                                    }}>
+                                                        {isMasterField ? (
+                                                            <StatusChip value={val} items={(masterData as any)[categoryMap[col.id]]} showContactTooltip={showTooltip} />
+                                                        ) : isLongText && val ? (
+                                                            <Tooltip title={val} arrow placement="top">
+                                                                <span style={{ 
+                                                                    display: 'block', 
+                                                                    overflow: 'hidden', 
+                                                                    textOverflow: 'ellipsis', 
+                                                                    whiteSpace: 'nowrap',
+                                                                    cursor: 'default'
+                                                                }}>
+                                                                    {val}
+                                                                </span>
+                                                            </Tooltip>
+                                                        ) : (
+                                                            val || <span style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)', fontStyle: 'italic', fontWeight: 300 }}>—</span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td style={{ 
+                                                padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, textAlign: 'center',
+                                                position: 'sticky', right: 0, background: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
+                                                zIndex: 2, borderLeft: `1px solid ${theme.palette.divider}`,
+                                                transition: 'background-color 0.15s ease'
+                                            }}>
+                                                {(() => {
+                                                    const role = (currentUser as any)?.role;
+                                                    const userRoles = Array.isArray(role) ? role : [role];
+                                                    const isSupervisor = userRoles.includes('business_admin');
+                                                    const isSuperAdmin = userRoles.includes('business_higher_admin');
+                                                    const isAdmin = userRoles.includes('business_higher_admin');
+                                                    
+                                                    const isCreator = !tender.creator || 
+                                                        (currentUser && tender.creator.id == (currentUser as any).id) || 
+                                                        isAdmin;
+                                                    
+                                                    const vStatus = tender.verification_status;
+                                                    
+                                                    return (
+                                                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
+                                                            {(!vStatus || vStatus === 'draft') && !isSupervisor && !isSuperAdmin && !isAdmin && (
+                                                                <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(tender.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap' }}>
+                                                                    Request Verification
+                                                                </Button>
+                                                            )}
+                                                            <Tooltip title="View Costing Report">
+                                                                <IconButton size="small" onClick={() => handleOpenReport(tender)} sx={{
+                                                                    color: '#6366f1',
+                                                                    bgcolor: alpha('#6366f1', 0.08),
+                                                                    '&:hover': { bgcolor: alpha('#6366f1', 0.15) },
+                                                                    width: 28, height: 28, borderRadius: 1.5
+                                                                }}>
+                                                                    <AssessmentIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            {vStatus === 'approved' && (
+                                                                <Chip size="small" label="Approved" color="success" variant="outlined" sx={{ height: 20, fontSize: 10 }} />
+                                                            )}
+                                                            <Tooltip title="Tender Costing">
+                                                                <IconButton size="small" onClick={() => navigate(`/businesses/tenders/${tender.id}/costing`)} sx={{
+                                                                    color: '#10b981',
+                                                                    bgcolor: alpha('#10b981', 0.08),
+                                                                    '&:hover': { bgcolor: alpha('#10b981', 0.15) },
+                                                                    width: 28, height: 28, borderRadius: 1.5
+                                                                }}>
+                                                                    <AttachMoneyIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            {isCreator ? (
+                                                                <>
+                                                                    <Tooltip title="Edit Tender">
+                                                                        <IconButton size="small" onClick={() => openEdit(tender)} sx={{
+                                                                            color: '#2563eb',
+                                                                            bgcolor: alpha('#2563eb', 0.08),
+                                                                            '&:hover': { bgcolor: alpha('#2563eb', 0.15) },
+                                                                            width: 28, height: 28, borderRadius: 1.5
+                                                                        }}>
+                                                                            <EditIcon sx={{ fontSize: 15 }} />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                    <Tooltip title="Delete Tender">
+                                                                        <IconButton size="small" onClick={() => handleDelete(tender.id)} sx={{
+                                                                            color: '#ef4444',
+                                                                            bgcolor: alpha('#ef4444', 0.08),
+                                                                            '&:hover': { bgcolor: alpha('#ef4444', 0.15) },
+                                                                            width: 28, height: 28, borderRadius: 1.5
+                                                                        }}>
+                                                                            <DeleteIcon sx={{ fontSize: 15 }} />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                </>
+                                                            ) : (
+                                                                <Tooltip title="View Only (Created by another user)">
+                                                                    <span>
+                                                                        <IconButton size="small" disabled sx={{ opacity: 0.3, width: 28, height: 28 }}>
+                                                                            <EditIcon sx={{ fontSize: 15 }} />
+                                                                        </IconButton>
+                                                                    </span>
+                                                                </Tooltip>
+                                                            )}
+                                                        </Box>
+                                                    );
+                                                })()}
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </Box>
+                    </Paper>
                 </motion.div>
             </Box>
 

@@ -52,7 +52,7 @@ function NavbarStyle1Content(props: NavbarStyle1ContentProps) {
 	const { data: navigationData } = useNavigationItems();
 
 	const role = Array.isArray(user?.role) ? user.role[0] : user?.role;
-	const isBoss = role === 'supervisor' || role === 'superadmin' || role === 'admin';
+	const isBoss = role === 'supervisor' || role === 'superadmin' || role === 'admin' || role === 'business_admin' || role === 'business_higher_admin';
 
 	const filteredNavigation = navigationData;
 
@@ -93,7 +93,7 @@ function NavbarStyle1Content(props: NavbarStyle1ContentProps) {
 								{role ?? 'member'}
 							</span>
 							<span className="text-[10px] opacity-60" style={{ color: isBoss ? '#a855f7' : '#3b82f6' }}>
-								{isBoss ? 'Full access' : 'View only (building)'}
+								{['business_admin', 'business_higher_admin'].includes(role) ? 'Business supervisor' : (isBoss ? 'Full access' : 'View only (building)')}
 							</span>
 						</div>
 					</div>

@@ -161,9 +161,9 @@ export default function TenderCostingReportDialog({
 
     const role = currentUser?.role;
     const userRoles = Array.isArray(role) ? role : [role];
-    const isSuperAdmin = userRoles.includes('superadmin');
-    const isAdmin = userRoles.includes('admin');
-    const isSupervisor = userRoles.includes('supervisor');
+    const isSuperAdmin = userRoles.includes('business_higher_admin');
+    const isAdmin = userRoles.includes('business_higher_admin');
+    const isSupervisor = userRoles.includes('business_admin');
     
     const vStatus = tender.verification_status;
 

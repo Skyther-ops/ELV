@@ -83,7 +83,7 @@ function FuseAuthorization({
     const newAccessGranted = auth ? userHasPermission : true;
     setAccessGranted(newAccessGranted);
 
-    const isBusinessUser = normalizedUserRoles.includes("businesses");
+    const isBusinessUser = normalizedUserRoles.some(r => ["businesses", "business_admin", "business_higher_admin"].includes(r));
 
     // --- Routing Logic ---
     if (!newAccessGranted) {

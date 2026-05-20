@@ -12,7 +12,8 @@ import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
 import CheckIcon from '@mui/icons-material/Check';
 
 export default function NotificationBell() {
-    const { user } = useAuth();
+    const { authState } = useAuth();
+    const user = authState?.user;
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);

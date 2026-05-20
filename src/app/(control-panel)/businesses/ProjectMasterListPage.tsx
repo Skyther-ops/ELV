@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import api from '@/utils/api';
 import { API_BASE_URL } from '@/utils/api';
 import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
@@ -144,18 +145,22 @@ function HeaderCell({ col, sortKey, sortDir, onSort }: {
     col: any; sortKey: string; sortDir: 'asc' | 'desc'; onSort: (id: string) => void;
 }) {
     const active = sortKey === col.id;
+    const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     return (
         <th onClick={() => onSort(col.id)} style={{
             minWidth: col.width, width: col.width,
-            background: '#f59e0b',
-            color: '#fff', fontWeight: 800, fontSize: 10,
+            background: isDark ? '#1e293b' : '#f1f5f9',
+            color: isDark ? '#94a3b8' : '#475569',
+            fontWeight: 700, fontSize: 11,
             letterSpacing: '0.05em', textTransform: 'uppercase',
-            padding: '0 12px', height: 52, whiteSpace: 'nowrap',
+            padding: '12px 16px', height: 48, whiteSpace: 'nowrap',
             position: 'sticky', top: 0, zIndex: 3,
-            borderRight: '1px solid rgba(255,255,255,0.15)',
+            borderBottom: `2px solid ${theme.palette.divider}`,
+            borderRight: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
             cursor: 'pointer', userSelect: 'none',
             textAlign: 'left',
-            transition: 'background 0.2s',
+            transition: 'background-color 0.2s',
         }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 {col.icon}
@@ -163,6 +168,7 @@ function HeaderCell({ col, sortKey, sortDir, onSort }: {
                 <span>{col.label}</span>
                 <SwapVertIcon sx={{
                     fontSize: 16, opacity: active ? 1 : 0.3,
+                    color: active ? '#2563eb' : (isDark ? '#94a3b8' : '#475569'),
                     transform: active && sortDir === 'desc' ? 'rotate(180deg)' : 'none',
                     transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     ml: 'auto'
@@ -293,6 +299,8 @@ function ProjectDialog({ open, initial, saving, onClose, onSave }: {
 // ── Main Page Component ──────────────────────────────────────────
 export default function ProjectMasterListPage() {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const [tenders, setTenders]     = useState<ProjectMasterListItem[]>([]);
     const [loadingData, setLoading] = useState(true);
     const [search, setSearch]       = useState('');
@@ -351,12 +359,16 @@ export default function ProjectMasterListPage() {
         <Box sx={{
             display: 'flex', flexDirection: 'column',
             height: '100%', overflow: 'hidden',
-            bgcolor: 'background.default',
+            background: isDark 
+                ? 'linear-gradient(135deg, #0b0f19 0%, #1e1b4b 100%)' 
+                : 'linear-gradient(135deg, #f0f4f8 0%, #e0e7ff 100%)',
         }}>
             {/* Page header */}
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                 <Box sx={{ px: 4, py: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                           borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap', gap: 2, bgcolor: 'background.paper' }}>
+                           borderBottom: '1px solid', borderColor: 'divider', flexWrap: 'wrap', gap: 2, 
+                           bgcolor: isDark ? 'rgba(15, 23, 42, 0.4)' : 'rgba(255, 255, 255, 0.5)',
+                           backdropFilter: 'blur(8px)' }}>
                     <Box>
                         <Typography variant="h4" fontWeight={900} letterSpacing="-1px">Project Master List</Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
@@ -382,79 +394,143 @@ export default function ProjectMasterListPage() {
             </motion.div>
 
             {/* Table Area */}
-            <Box sx={{ flex: 1, overflow: 'auto', p: 0, bgcolor: 'background.default' }}>
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }}>
-                    <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', tableLayout: 'fixed', minWidth: 1800 }}>
-                        <thead>
-                            <tr>
-                                <th style={{ width: 50, background: '#f59e0b', color: '#fff', fontWeight: 900, fontSize: 10, height: 52, position: 'sticky', top: 0, left: 0, zIndex: 4, borderRight: '1px solid rgba(255,255,255,0.2)', textAlign: 'center' }}>#</th>
-                                {STATIC_COLUMNS.map(col => (
-                                    <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                                ))}
-                                {COLUMNS.map(col => (
-                                    <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-                                ))}
-                                <th style={{ width: 80, background: '#f59e0b', position: 'sticky', top: 0, right: 0, zIndex: 4, borderLeft: '1px solid rgba(255,255,255,0.2)' }}></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <AnimatePresence>
-                                {filtered.map((row, idx) => (
-                                    <motion.tr key={row.id} layout
-                                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                                        style={{ background: idx % 2 === 0 ? 'transparent' : alpha('#f59e0b', 0.02) }}>
-                                        <td style={{ textAlign: 'center', fontSize: 11, fontWeight: 800, color: '#94a3b8', position: 'sticky', left: 0, bgcolor: idx % 2 === 0 ? '#fff' : '#fefcf8', zIndex: 2, borderRight: '1px solid rgba(0,0,0,0.05)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>{idx + 1}</td>
-                                        <td style={{ padding: '0 12px', fontSize: 13, borderBottom: '1px solid rgba(0,0,0,0.05)', fontWeight: 500 }}>{row.date}</td>
-                                        <td style={{ padding: '0 12px', fontSize: 13, fontWeight: 800, borderBottom: '1px solid rgba(0,0,0,0.05)', color: '#1e293b' }}>{row.projectCode}</td>
-                                        <td style={{ padding: '0 12px', fontSize: 13, borderBottom: '1px solid rgba(0,0,0,0.05)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'text.secondary', maxWidth: 250 }}>
-                                            <Tooltip title={row.projectTitle} arrow placement="top">
-                                                <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}>{row.projectTitle}</span>
-                                            </Tooltip>
-                                        </td>
-                                        
-                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <PdfChips files={row.poClientFiles ?? []} />
-                                        </td>
-                                        <td style={{ padding: '0 12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            {row.bgDocument ? (
-                                                <Tooltip title={row.bgDocument}>
-                                                    <Chip icon={<AttachFileIcon sx={{ fontSize: 14 }} />} label="View Doc" size="small" component="a" href={formatLink(row.bgDocument)} target="_blank" clickable
-                                                        sx={{ fontSize: 10, height: 24, fontWeight: 700, bgcolor: alpha('#f59e0b', 0.1), color: '#b45309', border: '1px solid', borderColor: alpha('#f59e0b', 0.2) }} />
-                                                </Tooltip>
-                                            ) : <Typography variant="caption" color="text.disabled">—</Typography>}
-                                        </td>
-                                        <td style={{ padding: '0 12px', fontSize: 13, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>{row.bgIssueDate || <Typography variant="caption" color="text.disabled">—</Typography>}</td>
-                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <PdfChips files={row.prPoProcurementFiles ?? []} />
-                                        </td>
-                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <PdfChips files={row.deliveryOrderFiles ?? []} />
-                                        </td>
-                                        <td style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <PdfChips files={row.invoiceDocumentFiles ?? []} />
-                                        </td>
-                                        
-                                        {(['projectProgressFiles', 'projectFolderFiles', 'sourcingFiles', 'quotationFiles'] as const).map((col) => (
-                                            <td key={col} style={{ padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                                <PdfChips files={(row as any)[col] ?? []} />
-                                            </td>
+            <Box sx={{ flex: 1, overflow: 'auto', p: 3, bgcolor: 'transparent' }}>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.2 }} style={{ height: '100%' }}>
+                    <Paper elevation={0} sx={{ 
+                        borderRadius: 3, 
+                        border: '1px solid', 
+                        borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(99,102,241,0.12)', 
+                        overflow: 'hidden', 
+                        boxShadow: isDark 
+                            ? '0 10px 30px -10px rgba(0,0,0,0.5)' 
+                            : '0 10px 30px -10px rgba(99,102,241,0.15)',
+                        bgcolor: isDark ? 'rgba(30, 41, 59, 0.7)' : 'rgba(255, 255, 255, 0.85)',
+                        backdropFilter: 'blur(16px)',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <Box sx={{ flex: 1, overflow: 'auto' }}>
+                            <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', tableLayout: 'fixed', minWidth: 1800 }}>
+                                <thead>
+                                    <tr>
+                                        <th style={{ 
+                                            width: 50, 
+                                            background: isDark ? '#1e293b' : '#f1f5f9', 
+                                            color: isDark ? '#94a3b8' : '#475569', 
+                                            fontWeight: 700, fontSize: 11, height: 48, 
+                                            position: 'sticky', top: 0, left: 0, zIndex: 4, 
+                                            borderRight: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
+                                            borderBottom: `2px solid ${theme.palette.divider}`,
+                                            textAlign: 'center' 
+                                        }}>#</th>
+                                        {STATIC_COLUMNS.map(col => (
+                                            <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                                         ))}
-
-                                        <td style={{ textAlign: 'center', position: 'sticky', right: 0, bgcolor: idx % 2 === 0 ? '#fff' : '#fefcf8', zIndex: 2, borderLeft: '1px solid rgba(0,0,0,0.05)', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                                            <Tooltip title="Update Tracking Details">
-                                                <IconButton size="small" onClick={() => openEdit(row)}
-                                                    sx={{ color: '#f59e0b', bgcolor: alpha('#f59e0b', 0.1), '&:hover': { bgcolor: '#f59e0b', color: '#fff' } }}>
-                                                    <EditIcon sx={{ fontSize: 18 }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </td>
-                                        </motion.tr>
-                                    ))}
-                                </AnimatePresence>
-                            </tbody>
-                        </table>
-                    </motion.div>
-                </Box>
+                                        {COLUMNS.map(col => (
+                                            <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
+                                        ))}
+                                        <th style={{ 
+                                            width: 80, 
+                                            background: isDark ? '#1e293b' : '#f1f5f9', 
+                                            position: 'sticky', top: 0, right: 0, zIndex: 4, 
+                                            borderBottom: `2px solid ${theme.palette.divider}`,
+                                            borderLeft: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' 
+                                        }}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <AnimatePresence>
+                                        {filtered.map((row, idx) => (
+                                            <motion.tr key={row.id} layout
+                                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                                style={{ 
+                                                    background: idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.005)'),
+                                                    transition: 'background-color 0.15s ease'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.backgroundColor = isDark ? 'rgba(37,99,235,0.03)' : 'rgba(37,99,235,0.015)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.backgroundColor = idx % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.005)');
+                                                }}
+                                            >
+                                                <td style={{ 
+                                                    textAlign: 'center', fontSize: 11, fontWeight: 700, 
+                                                    color: theme.palette.text.secondary, position: 'sticky', left: 0, 
+                                                    bgcolor: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
+                                                    zIndex: 2, 
+                                                    borderRight: `1px solid ${theme.palette.divider}`, 
+                                                    borderBottom: `1px solid ${theme.palette.divider}`,
+                                                    transition: 'background-color 0.15s ease'
+                                                }}>{idx + 1}</td>
+                                                <td style={{ padding: '12px 16px', fontSize: 12, borderBottom: `1px solid ${theme.palette.divider}`, fontWeight: 500, color: theme.palette.text.primary }}>{row.date}</td>
+                                                <td style={{ padding: '12px 16px', fontSize: 12, fontWeight: 700, borderBottom: `1px solid ${theme.palette.divider}`, color: isDark ? '#60a5fa' : '#1e3a5f' }}>{row.projectCode}</td>
+                                                <td style={{ padding: '12px 16px', fontSize: 12, borderBottom: `1px solid ${theme.palette.divider}`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: theme.palette.text.secondary, maxWidth: 250 }}>
+                                                    <Tooltip title={row.projectTitle} arrow placement="top">
+                                                        <span style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default' }}>{row.projectTitle}</span>
+                                                    </Tooltip>
+                                                </td>
+                                                
+                                                <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                    <PdfChips files={row.poClientFiles ?? []} />
+                                                </td>
+                                                <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                    {row.bgDocument ? (
+                                                        <Tooltip title={row.bgDocument}>
+                                                            <Chip icon={<AttachFileIcon sx={{ fontSize: 14 }} />} label="View Doc" size="small" component="a" href={formatLink(row.bgDocument)} target="_blank" clickable
+                                                                sx={{ fontSize: 10, height: 24, fontWeight: 700, bgcolor: alpha('#f59e0b', 0.1), color: '#b45309', border: '1px solid', borderColor: alpha('#f59e0b', 0.2) }} />
+                                                        </Tooltip>
+                                                    ) : <span style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)', fontStyle: 'italic', fontWeight: 300 }}>—</span>}
+                                                </td>
+                                                <td style={{ padding: '12px 16px', fontSize: 12, borderBottom: `1px solid ${theme.palette.divider}`, color: theme.palette.text.primary }}>
+                                                    {row.bgIssueDate || <span style={{ color: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.25)', fontStyle: 'italic', fontWeight: 300 }}>—</span>}
+                                                </td>
+                                                <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                    <PdfChips files={row.prPoProcurementFiles ?? []} />
+                                                </td>
+                                                <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                    <PdfChips files={row.deliveryOrderFiles ?? []} />
+                                                </td>
+                                                <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                    <PdfChips files={row.invoiceDocumentFiles ?? []} />
+                                                </td>
+                                                
+                                                {(['projectProgressFiles', 'projectFolderFiles', 'sourcingFiles', 'quotationFiles'] as const).map((col) => (
+                                                    <td key={col} style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                        <PdfChips files={(row as any)[col] ?? []} />
+                                                    </td>
+                                                ))}
+ 
+                                                <td style={{ 
+                                                    textAlign: 'center', position: 'sticky', right: 0, 
+                                                    bgcolor: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
+                                                    zIndex: 2, 
+                                                    borderLeft: `1px solid ${theme.palette.divider}`, 
+                                                    borderBottom: `1px solid ${theme.palette.divider}`,
+                                                    transition: 'background-color 0.15s ease'
+                                                }}>
+                                                    <Tooltip title="Update Tracking Details">
+                                                        <IconButton size="small" onClick={() => openEdit(row)}
+                                                            sx={{ 
+                                                                color: '#f59e0b', 
+                                                                bgcolor: alpha('#f59e0b', 0.08), 
+                                                                '&:hover': { bgcolor: alpha('#f59e0b', 0.15) },
+                                                                width: 28, height: 28, borderRadius: 1.5
+                                                            }}>
+                                                            <EditIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </td>
+                                            </motion.tr>
+                                        ))}
+                                    </AnimatePresence>
+                                </tbody>
+                            </table>
+                        </Box>
+                    </Paper>
+                </motion.div>
+            </Box>
 
             <ProjectDialog open={dialogOpen} initial={editItem} saving={saving}
                 onClose={() => setDialogOpen(false)} onSave={handleSave} />

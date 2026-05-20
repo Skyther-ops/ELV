@@ -27,7 +27,9 @@ const ROLES = {
     supervisor: { label: 'Supervisor', chip: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', dot: 'bg-violet-500' },
     facilitator: { label: 'Facilitator', chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
     member: { label: 'Member', chip: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', dot: 'bg-sky-500' },
-    businesses: { label: 'Business', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', dot: 'bg-emerald-500' },
+    businesses: { label: 'Business Member', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', dot: 'bg-emerald-500' },
+    business_admin: { label: 'Business Admin', chip: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300', dot: 'bg-indigo-500' },
+    business_higher_admin: { label: 'Business Higher Admin', chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', dot: 'bg-teal-500' },
 };
 
 function getRole(user: User): string {
@@ -96,7 +98,7 @@ export default function UsersPage() {
             setUsers(p => [...p, u]);
             enqueueSnackbar('User created', { variant: 'success' });
             setOpenAdd(false);
-            setForm({ name: '', email: '', password: '', role: 'member' });
+            setForm({ name: '', email: '', password: '', role: defaultAddRole });
         } catch {
             enqueueSnackbar('Failed to create user', { variant: 'error' });
         } finally { setSubmitting(false); }
@@ -128,9 +130,25 @@ export default function UsersPage() {
         } finally { setDeleteSubmitting(false); }
     };
 
-    const isSupervisor = (currentUser?.role as string)?.includes('supervisor');
+    const currentUserRole = currentUser?.role;
+    const currentUserRoles = Array.isArray(currentUserRole) 
+        ? currentUserRole 
+        : (typeof currentUserRole === 'string' ? [currentUserRole] : []);
+    
+    const isGlobalManager = currentUserRoles.some(r => ['supervisor', 'superadmin', 'admin'].includes(r));
+    const isBusinessManager = currentUserRoles.some(r => ['business_admin', 'business_higher_admin'].includes(r));
+    const isSupervisor = isGlobalManager || isBusinessManager;
+    const defaultAddRole = (isBusinessManager && !isGlobalManager) ? 'businesses' : 'member';
 
-    const filtered = users.filter(u => {
+    const viewableUsers = users.filter(u => {
+        if (isBusinessManager && !isGlobalManager) {
+            const role = getRole(u);
+            return ['businesses', 'business_admin', 'business_higher_admin'].includes(role);
+        }
+        return true;
+    });
+
+    const filtered = viewableUsers.filter(u => {
         const q = search.toLowerCase();
         const matchSearch = !q || u.displayName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
         const matchRole = filterRole === 'all' || getRole(u) === filterRole;
@@ -138,12 +156,14 @@ export default function UsersPage() {
     });
 
     const counts = {
-        all: users.length,
-        superadmin: users.filter(u => getRole(u) === 'superadmin').length,
-        supervisor: users.filter(u => getRole(u) === 'supervisor').length,
-        facilitator: users.filter(u => getRole(u) === 'facilitator').length,
-        member: users.filter(u => getRole(u) === 'member').length,
-        businesses: users.filter(u => getRole(u) === 'businesses').length,
+        all: viewableUsers.length,
+        superadmin: viewableUsers.filter(u => getRole(u) === 'superadmin').length,
+        supervisor: viewableUsers.filter(u => getRole(u) === 'supervisor').length,
+        facilitator: viewableUsers.filter(u => getRole(u) === 'facilitator').length,
+        member: viewableUsers.filter(u => getRole(u) === 'member').length,
+        businesses: viewableUsers.filter(u => getRole(u) === 'businesses').length,
+        business_admin: viewableUsers.filter(u => getRole(u) === 'business_admin').length,
+        business_higher_admin: viewableUsers.filter(u => getRole(u) === 'business_higher_admin').length,
     };
 
     if (loading) return <FuseLoading />;
@@ -155,7 +175,7 @@ export default function UsersPage() {
                     <FuseSvgIcon size={24} className="text-gray-400">heroicons-outline:lock-closed</FuseSvgIcon>
                 </div>
                 <p className="font-bold text-sm text-gray-700 dark:text-gray-300">Access Denied</p>
-                <p className="text-xs text-gray-400">Only supervisors can manage users.</p>
+                <p className="text-xs text-gray-400">Only authorized supervisors and business managers can manage users.</p>
             </div>
         );
     }
@@ -170,7 +190,7 @@ export default function UsersPage() {
                     <p className="text-[11px] text-gray-400 mt-0.5">Manage accounts, roles and access</p>
                 </div>
                 <button
-                    onClick={() => setOpenAdd(true)}
+                    onClick={() => { setForm({ name: '', email: '', password: '', role: defaultAddRole }); setOpenAdd(true); }}
                     className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
                 >
                     <FuseSvgIcon size={14}>heroicons-outline:plus</FuseSvgIcon>
@@ -182,7 +202,10 @@ export default function UsersPage() {
             <div className="px-20 py-10 flex items-center gap-8 shrink-0">
                 {/* Role tabs */}
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-white/5 rounded-lg p-1">
-                    {(['all', 'superadmin', 'supervisor', 'facilitator', 'member', 'businesses'] as const).map(r => (
+                    {((isBusinessManager && !isGlobalManager)
+                        ? (['all', 'businesses', 'business_admin', 'business_higher_admin'] as const)
+                        : (['all', 'superadmin', 'supervisor', 'facilitator', 'member', 'businesses', 'business_admin', 'business_higher_admin'] as const)
+                    ).map(r => (
                         <button
                             key={r}
                             onClick={() => setFilterRole(r)}
@@ -192,7 +215,7 @@ export default function UsersPage() {
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                             }`}
                         >
-                            {r === 'all' ? 'All' : (r === 'superadmin' ? 'Super Admin' : r)}
+                            {r === 'all' ? 'All' : (r === 'superadmin' ? 'Super Admin' : r === 'business_admin' ? 'Business Admin' : r === 'business_higher_admin' ? 'Business Higher Admin' : r === 'businesses' ? 'Business Member' : r)}
                             <span className={`ml-1.5 text-[10px] font-black ${filterRole === r ? 'text-blue-600' : 'text-gray-400'}`}>
                                 {counts[r]}
                             </span>
@@ -363,11 +386,13 @@ export default function UsersPage() {
                         <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '13px' } }}>
                             <InputLabel>Role</InputLabel>
                             <Select value={form.role} label="Role" onChange={e => setForm({ ...form, role: e.target.value })}>
-                                <MenuItem value="superadmin">Super Admin</MenuItem>
-                                <MenuItem value="supervisor">Supervisor</MenuItem>
-                                <MenuItem value="facilitator">Facilitator</MenuItem>
-                                <MenuItem value="member">Member</MenuItem>
-                                <MenuItem value="businesses">Business</MenuItem>
+                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="superadmin">Super Admin</MenuItem>}
+                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="supervisor">Supervisor</MenuItem>}
+                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="facilitator">Facilitator</MenuItem>}
+                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="member">Member</MenuItem>}
+                                <MenuItem value="businesses">Business Member</MenuItem>
+                                <MenuItem value="business_admin">Business Admin</MenuItem>
+                                <MenuItem value="business_higher_admin">Business Higher Admin</MenuItem>
                             </Select>
                         </FormControl>
                     </div>
@@ -398,11 +423,13 @@ export default function UsersPage() {
                     <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '13px' } }}>
                         <InputLabel>New Role</InputLabel>
                         <Select value={editRole} label="New Role" onChange={e => setEditRole(e.target.value)}>
-                            <MenuItem value="superadmin">Super Admin</MenuItem>
-                            <MenuItem value="supervisor">Supervisor</MenuItem>
-                            <MenuItem value="facilitator">Facilitator</MenuItem>
-                            <MenuItem value="member">Member</MenuItem>
-                            <MenuItem value="businesses">Business</MenuItem>
+                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="superadmin">Super Admin</MenuItem>}
+                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="supervisor">Supervisor</MenuItem>}
+                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="facilitator">Facilitator</MenuItem>}
+                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="member">Member</MenuItem>}
+                            <MenuItem value="businesses">Business Member</MenuItem>
+                            <MenuItem value="business_admin">Business Admin</MenuItem>
+                            <MenuItem value="business_higher_admin">Business Higher Admin</MenuItem>
                         </Select>
                     </FormControl>
                 </DialogContent>

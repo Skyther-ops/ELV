@@ -6,7 +6,7 @@ const usersRoutes = [
     {
         path: 'management/users',
         element: <UsersPage />,
-        auth: ['supervisor']
+        auth: ['supervisor', 'business_admin', 'business_higher_admin']
     }
 ];
 
