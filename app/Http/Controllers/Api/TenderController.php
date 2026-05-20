@@ -73,6 +73,22 @@ class TenderController extends Controller
         $data['created_by'] = $request->user()->id;
 
         $tender = Tender::create($data);
+        $this->autoPopulateMasterList($tender);
+
+        // Notify supervisors/superadmins of the newly created tender
+        $code = $tender->project_code ?? 'N/A';
+        $title = $tender->project_title ?? '';
+        $message = "[Tender] New tender added: $code" . ($title ? " ($title)" : "") . " by " . $request->user()->name;
+        $url = '/businesses/tenders';
+
+        $notifiables = \App\Models\User::whereIn('role', ['supervisor', 'superadmin', 'business_admin'])->get();
+        \Illuminate\Support\Facades\Notification::send($notifiables, new \App\Notifications\VerificationRequested([
+            'message' => $message,
+            'url' => $url,
+            'id' => $tender->id,
+            'type' => 'Tender'
+        ]));
+
         return response()->json($tender->load(['creator:id,name', 'verifier:id,name', 'approver:id,name']), 201);
     }
 
@@ -105,6 +121,7 @@ class TenderController extends Controller
         ]);
 
         $tender->update($data);
+        $this->autoPopulateMasterList($tender);
         return response()->json($tender->load(['creator:id,name', 'verifier:id,name', 'approver:id,name']));
     }
 
@@ -119,7 +136,7 @@ class TenderController extends Controller
         $request->validate([
             'column'  => ['required', 'string', 'in:' . implode(',', self::FILE_COLUMNS)],
             'files'   => ['required', 'array', 'min:1'],
-            'files.*' => ['file', 'mimes:pdf', 'max:20480'], // 20 MB each
+            'files.*' => ['file', 'mimes:pdf', 'max:512000'], // 500 MB each
         ]);
 
         $column   = $request->input('column');
@@ -188,5 +205,39 @@ class TenderController extends Controller
 
         $tender->delete();
         return response()->json(['message' => 'Deleted']);
+    }
+
+    /**
+     * Automatically populate the master list configurations with new entries from the tender
+     */
+    private function autoPopulateMasterList(\App\Models\Tender $tender): void
+    {
+        $fields = [
+            'status'       => 'status',
+            'type'         => 'type',
+            'company'      => 'company',
+            'customer'     => 'customer',
+            'supplier'     => 'supplier',
+            'agency_types' => 'agencyTypes',
+        ];
+
+        foreach ($fields as $field => $category) {
+            $value = trim($tender->$field ?? '');
+            if ($value !== '') {
+                // Perform a case-insensitive existence check to prevent duplicate labels
+                $exists = \App\Models\MasterListItem::where('category', $category)
+                    ->whereRaw('LOWER(label) = ?', [strtolower($value)])
+                    ->exists();
+
+                if (!$exists) {
+                    \App\Models\MasterListItem::create([
+                        'category'   => $category,
+                        'label'      => $value,
+                        'color'      => null,
+                        'text_color' => null,
+                    ]);
+                }
+            }
+        }
     }
 }

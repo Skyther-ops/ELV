@@ -16,13 +16,19 @@ trait WorkflowControllerTrait {
         $message = "[$type] Verification requested for $code" . ($name ? " ($name)" : "") . " by " . $request->user()->name;
         $url = $type === 'Tender' ? '/businesses/tenders' : '/businesses/license-tracking';
 
-        $notifiables = User::whereIn('role', ['supervisor', 'superadmin'])->get();
+        $notifiables = User::whereIn('role', ['supervisor', 'superadmin', 'business_admin'])->get();
         \Illuminate\Support\Facades\Notification::send($notifiables, new VerificationRequested([
             'message' => $message,
             'url' => $url,
             'id' => $model->id,
             'type' => $type
         ]));
+
+        $relations = [];
+        if (method_exists($model, 'creator')) { $relations[] = 'creator:id,name'; }
+        if (method_exists($model, 'verifier')) { $relations[] = 'verifier:id,name'; }
+        if (method_exists($model, 'approver')) { $relations[] = 'approver:id,name'; }
+        if (!empty($relations)) { $model->load($relations); }
 
         return response()->json($model);
     }
@@ -42,13 +48,19 @@ trait WorkflowControllerTrait {
         $message = "[$type] Verification approved for $code. Pending final approval from Super Admin.";
         $url = $type === 'Tender' ? '/businesses/tenders' : '/businesses/license-tracking';
 
-        $superadmins = User::where('role', 'superadmin')->get();
+        $superadmins = User::whereIn('role', ['superadmin', 'business_higher_admin'])->get();
         \Illuminate\Support\Facades\Notification::send($superadmins, new VerificationRequested([
             'message' => $message,
             'url' => $url,
             'id' => $model->id,
             'type' => $type
         ]));
+
+        $relations = [];
+        if (method_exists($model, 'creator')) { $relations[] = 'creator:id,name'; }
+        if (method_exists($model, 'verifier')) { $relations[] = 'verifier:id,name'; }
+        if (method_exists($model, 'approver')) { $relations[] = 'approver:id,name'; }
+        if (!empty($relations)) { $model->load($relations); }
 
         return response()->json($model);
     }
@@ -93,13 +105,19 @@ trait WorkflowControllerTrait {
             }
         }
 
-        $superadmins = User::where('role', 'superadmin')->get();
+        $superadmins = User::whereIn('role', ['superadmin', 'business_higher_admin'])->get();
         \Illuminate\Support\Facades\Notification::send($superadmins, new VerificationRequested([
             'message' => $message,
             'url' => $url,
             'id' => $model->id,
             'type' => $type
         ]));
+
+        $relations = [];
+        if (method_exists($model, 'creator')) { $relations[] = 'creator:id,name'; }
+        if (method_exists($model, 'verifier')) { $relations[] = 'verifier:id,name'; }
+        if (method_exists($model, 'approver')) { $relations[] = 'approver:id,name'; }
+        if (!empty($relations)) { $model->load($relations); }
 
         return response()->json($model);
     }
