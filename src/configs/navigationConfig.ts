@@ -313,6 +313,13 @@ const navigationConfig: FuseNavItemType[] = [
 				type: 'item',
 				icon: 'heroicons-outline:shield-check',
 				url: 'businesses/license-tracking'
+			},
+			{
+				id: 'business-setup-config',
+				title: 'Setup Config',
+				type: 'item',
+				icon: 'heroicons-outline:cog-8-tooth',
+				url: 'businesses/setup-config'
 			}
 		]
 	}

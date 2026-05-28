@@ -36,6 +36,8 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import BusinessCenterIcon from '@mui/icons-material/BusinessCenter';
 import SourceIcon from '@mui/icons-material/Source';
+import SettingsIcon from '@mui/icons-material/Settings';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { useNavigate } from 'react-router';
 import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
 
@@ -57,6 +59,7 @@ export type ProjectMasterListItem = {
     projectFolderFiles: PdfFile[];
     sourcingFiles: PdfFile[];
     quotationFiles: PdfFile[];
+    customDocuments?: Record<string, PdfFile[]>;
 };
 
 // ── Link Helper & PDF URL fixer ─────────────────────────────────
@@ -116,20 +119,31 @@ function PdfChips({ files }: { files: PdfFile[] }) {
     if (!files || files.length === 0) return <Typography variant="caption" color="text.disabled">—</Typography>;
     return (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {files.map((f, i) => (
-                <Tooltip key={i} title={f.name}>
-                    <Chip
-                        icon={<PictureAsPdfIcon sx={{ fontSize: 13 }} />}
-                        label={`PDF ${i + 1}`}
-                        size="small"
-                        component="a"
-                        href={fixPdfUrl(f.url)}
-                        target="_blank"
-                        clickable
-                        sx={{ fontSize: 10, height: 22, fontWeight: 700, bgcolor: alpha('#ef4444', 0.1), color: '#b91c1c', border: '1px solid', borderColor: alpha('#ef4444', 0.25) }}
-                    />
-                </Tooltip>
-            ))}
+            {files.map((f, i) => {
+                const isPdf = f.name.toLowerCase().endsWith('.pdf');
+                return (
+                    <Tooltip key={i} title={f.name}>
+                        <Chip
+                            icon={isPdf ? <PictureAsPdfIcon sx={{ fontSize: 13 }} /> : <AttachFileIcon sx={{ fontSize: 13 }} />}
+                            label={isPdf ? `PDF ${i + 1}` : `File ${i + 1}`}
+                            size="small"
+                            component="a"
+                            href={fixPdfUrl(f.url)}
+                            target="_blank"
+                            clickable
+                            sx={{
+                                fontSize: 10,
+                                height: 22,
+                                fontWeight: 700,
+                                bgcolor: isPdf ? alpha('#ef4444', 0.1) : alpha('#2563eb', 0.1),
+                                color: isPdf ? '#b91c1c' : '#1d4ed8',
+                                border: '1px solid',
+                                borderColor: isPdf ? alpha('#ef4444', 0.25) : alpha('#2563eb', 0.25)
+                            }}
+                        />
+                    </Tooltip>
+                );
+            })}
         </Box>
     );
 }
@@ -255,12 +269,12 @@ function ProjectDialog({ open, initial, saving, onClose, onSave }: {
             <DialogContent sx={{ px: 4, py: 4 }}>
                 <SectionTitle title="Banking & Guarantees" icon={<BusinessCenterIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
                 <Grid container spacing={2.5} sx={{ mb: 4 }}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                         <StyledTextField label="BG Document Path/Link" value={form.bgDocument || ''}
                             onChange={(e:any) => set('bgDocument')(e.target.value)}
                             InputProps={{ startAdornment: <InputAdornment position="start"><AttachFileIcon sx={{ fontSize: 18, color: 'text.disabled' }} /></InputAdornment> }} />
                     </Grid>
-                    <Grid item xs={12} sm={6}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                         <StyledTextField label="BG Issues Date" type="date" value={form.bgIssueDate || ''}
                             onChange={(e:any) => set('bgIssueDate')(e.target.value)}
                             InputLabelProps={{ shrink: true }}
@@ -296,6 +310,28 @@ function ProjectDialog({ open, initial, saving, onClose, onSave }: {
     );
 }
 
+const FIXED_SLUGS = [
+    'po_client',
+    'pr_po_procurement',
+    'delivery_order',
+    'invoice_document',
+    'project_progress_files',
+    'project_folder_files',
+    'sourcing_files',
+    'quotation_files'
+];
+
+const CELL_ID_TO_FIXED_SLUG: Record<string, string> = {
+    'poClientFiles': 'po_client',
+    'prPoProcurementFiles': 'pr_po_procurement',
+    'deliveryOrderFiles': 'delivery_order',
+    'invoiceDocumentFiles': 'invoice_document',
+    'projectProgressFiles': 'project_progress_files',
+    'projectFolderFiles': 'project_folder_files',
+    'sourcingFiles': 'sourcing_files',
+    'quotationFiles': 'quotation_files'
+};
+
 // ── Main Page Component ──────────────────────────────────────────
 export default function ProjectMasterListPage() {
     const navigate = useNavigate();
@@ -310,14 +346,81 @@ export default function ProjectMasterListPage() {
     const [editItem, setEditItem]     = useState<ProjectMasterListItem | null>(null);
     const [saving, setSaving]         = useState(false);
     const [snack, setSnack]           = useState<{ msg: string; sev: 'success' | 'error' } | null>(null);
+    const [customCols, setCustomCols] = useState<any[]>([]);
 
     useEffect(() => {
-        api.get('tenders')
-            .json<any[]>()
-            .then(data => setTenders(data.map(fromApi)))
-            .catch(console.error)
-            .finally(() => setLoading(false));
+        let active = true;
+
+        const fetchTenders = (isInitial = false) => {
+            if (isInitial) setLoading(true);
+            api.get('tenders')
+                .json<any[]>()
+                .then(data => {
+                    if (active) {
+                        setTenders(data.map(fromApi));
+                    }
+                })
+                .catch(console.error)
+                .finally(() => {
+                    if (isInitial && active) setLoading(false);
+                });
+        };
+
+        // Initial fetch
+        fetchTenders(true);
+
+        // Fetch dynamic columns configuration
+        api.get('master-list')
+            .json<any>()
+            .then(raw => {
+                if (active) {
+                    setCustomCols(raw.project_document_title || []);
+                }
+            })
+            .catch(console.error);
+
+        // Background polling every 4 seconds
+        const interval = setInterval(() => {
+            fetchTenders(false);
+        }, 4000);
+
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
     }, []);
+
+    const allColumns = useMemo(() => {
+        const overridesMap = new Map<string, { label: string; text_color: string }>();
+        customCols.forEach(col => {
+            if (FIXED_SLUGS.includes(col.color)) {
+                overridesMap.set(col.color, { label: col.label, text_color: col.text_color || 'pdf' });
+            }
+        });
+
+        const mappedColumns = COLUMNS.map(col => {
+            const slug = CELL_ID_TO_FIXED_SLUG[col.id];
+            if (slug && overridesMap.has(slug)) {
+                const ovr = overridesMap.get(slug)!;
+                return {
+                    ...col,
+                    label: ovr.label,
+                    isPdf: ovr.text_color === 'pdf'
+                };
+            }
+            return col;
+        });
+
+        const dynamicCols = customCols
+            .filter(col => !FIXED_SLUGS.includes(col.color))
+            .map(col => ({
+                id: col.color, // slug
+                label: col.label,
+                width: 180,
+                isPdf: col.text_color === 'pdf'
+            }));
+        return [...mappedColumns, ...dynamicCols];
+    }, [customCols]);
 
     const handleSort = (id: string) => {
         if (sortKey === id) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -427,7 +530,7 @@ export default function ProjectMasterListPage() {
                                         {STATIC_COLUMNS.map(col => (
                                             <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                                         ))}
-                                        {COLUMNS.map(col => (
+                                        {allColumns.map(col => (
                                             <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                                         ))}
                                         <th style={{ 
@@ -458,7 +561,7 @@ export default function ProjectMasterListPage() {
                                                 <td style={{ 
                                                     textAlign: 'center', fontSize: 11, fontWeight: 700, 
                                                     color: theme.palette.text.secondary, position: 'sticky', left: 0, 
-                                                    bgcolor: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
+                                                    backgroundColor: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
                                                     zIndex: 2, 
                                                     borderRight: `1px solid ${theme.palette.divider}`, 
                                                     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -501,10 +604,19 @@ export default function ProjectMasterListPage() {
                                                         <PdfChips files={(row as any)[col] ?? []} />
                                                     </td>
                                                 ))}
+
+                                                {customCols.map((col) => {
+                                                    const files = (row.customDocuments && row.customDocuments[col.color]) || [];
+                                                    return (
+                                                        <td key={col.id} style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                            <PdfChips files={files} />
+                                                        </td>
+                                                    );
+                                                })}
  
                                                 <td style={{ 
                                                     textAlign: 'center', position: 'sticky', right: 0, 
-                                                    bgcolor: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
+                                                    backgroundColor: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
                                                     zIndex: 2, 
                                                     borderLeft: `1px solid ${theme.palette.divider}`, 
                                                     borderBottom: `1px solid ${theme.palette.divider}`,
@@ -561,6 +673,7 @@ function fromApi(raw: any): ProjectMasterListItem {
         projectFolderFiles:     raw.project_folder_files   ?? [],
         sourcingFiles:          raw.sourcing_files         ?? [],
         quotationFiles:         raw.quotation_files        ?? [],
+        customDocuments:        raw.custom_documents       ?? {},
     };
 }
 
@@ -587,10 +700,12 @@ function PdfUploadSection({ tenderId }: { tenderId: string }) {
     const [data, setData]       = useState<ProjectMasterListItem | null>(null);
     const [uploading, setUploading] = useState<string | null>(null);
     const [deleting, setDeleting]   = useState<string | null>(null);
+    const [customCols, setCustomCols] = useState<any[]>([]);
     const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     useEffect(() => {
         api.get(`tenders/${tenderId}`).json<any>().then(raw => setData(fromApi(raw))).catch(console.error);
+        api.get('master-list').json<any>().then(raw => setCustomCols(raw.project_document_title || [])).catch(console.error);
     }, [tenderId]);
 
     const handleUpload = async (column: string, files: FileList | null) => {
@@ -615,7 +730,7 @@ function PdfUploadSection({ tenderId }: { tenderId: string }) {
         finally { setDeleting(null); }
     };
 
-    const fileKey = (col: string): keyof ProjectMasterListItem => {
+    const fileKey = (col: string): keyof ProjectMasterListItem | 'custom' => {
         const map: Record<string, keyof ProjectMasterListItem> = {
             po_client:              'poClientFiles',
             pr_po_procurement:      'prPoProcurementFiles',
@@ -626,8 +741,36 @@ function PdfUploadSection({ tenderId }: { tenderId: string }) {
             sourcing_files:         'sourcingFiles',
             quotation_files:        'quotationFiles',
         };
-        return map[col];
+        return map[col] || 'custom';
     };
+
+    const allSections = useMemo(() => {
+        const sections = PDF_SECTIONS.map(sec => {
+            const ovr = customCols.find(c => c.color === sec.column);
+            if (ovr) {
+                return {
+                    ...sec,
+                    label: ovr.label,
+                    accept: ovr.text_color === 'pdf' ? 'application/pdf' : undefined
+                };
+            }
+            return {
+                ...sec,
+                accept: 'application/pdf'
+            };
+        });
+
+        const dynamicSections = customCols
+            .filter(col => !FIXED_SLUGS.includes(col.color))
+            .map(col => ({
+                column: col.color, // slug
+                label: col.label,
+                icon: <DescriptionIcon sx={{ fontSize: 16 }} />,
+                group: 'Custom Documents',
+                accept: col.text_color === 'pdf' ? 'application/pdf' : undefined
+            }));
+        return [...sections, ...dynamicSections] as any[];
+    }, [customCols]);
 
     if (!data) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={24} /></Box>;
 
@@ -635,19 +778,29 @@ function PdfUploadSection({ tenderId }: { tenderId: string }) {
         <Grid container spacing={2}>
             {(() => {
                 let lastGroup = '';
-                return PDF_SECTIONS.map(({ column, label, icon, group }) => {
-                    const files = (data[fileKey(column)] as PdfFile[]) ?? [];
+                return allSections.map(({ column, label, icon, group, accept }) => {
+                    const key = fileKey(column);
+                    const files = key === 'custom'
+                        ? (data.customDocuments && data.customDocuments[column]) || []
+                        : (data[key] as PdfFile[]) ?? [];
+                    
                     const isUp  = uploading === column;
                     const showGroupHeader = group !== lastGroup;
                     lastGroup = group;
+                    
+                    const isPdfOnly = accept === 'application/pdf';
+                    const acceptAttr = isPdfOnly ? 'application/pdf' : undefined;
+                    const buttonText = isPdfOnly ? 'Upload PDF' : 'Upload File';
+                    const emptyText = isPdfOnly ? 'No PDFs uploaded yet' : 'No files uploaded yet';
+
                     return (
                         <React.Fragment key={column}>
                             {showGroupHeader && (
-                                <Grid item xs={12}>
-                                    <SectionTitle title={group} icon={group === 'Client & Procurement' ? <ReceiptIcon sx={{ fontSize: 16, color: '#f59e0b' }} /> : <FolderIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
+                                <Grid size={{ xs: 12 }}>
+                                    <SectionTitle title={group} icon={group === 'Client & Procurement' ? <ReceiptIcon sx={{ fontSize: 16, color: '#f59e0b' }} /> : group === 'Custom Documents' ? <SettingsIcon sx={{ fontSize: 16, color: '#f59e0b' }} /> : <FolderIcon sx={{ fontSize: 16, color: '#f59e0b' }} />} />
                                 </Grid>
                             )}
-                            <Grid item xs={12} sm={6}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
                                 <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -661,12 +814,12 @@ function PdfUploadSection({ tenderId }: { tenderId: string }) {
                                             onClick={() => inputRefs.current[column]?.click()}
                                             sx={{ textTransform: 'none', fontWeight: 700, fontSize: 11, borderRadius: 2, bgcolor: alpha('#f59e0b', 0.1), color: '#b45309', '&:hover': { bgcolor: alpha('#f59e0b', 0.2) } }}
                                         >
-                                            Upload PDF
+                                            {buttonText}
                                         </Button>
                                         <input
                                             type="file"
                                             multiple
-                                            accept="application/pdf"
+                                            accept={acceptAttr}
                                             style={{ display: 'none' }}
                                             ref={el => { inputRefs.current[column] = el; }}
                                             onChange={e => handleUpload(column, e.target.files)}
@@ -674,25 +827,32 @@ function PdfUploadSection({ tenderId }: { tenderId: string }) {
                                     </Box>
                                     {isUp && <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />}
                                     {files.length === 0 ? (
-                                        <Typography variant="caption" color="text.disabled">No PDFs uploaded yet</Typography>
+                                        <Typography variant="caption" color="text.disabled">{emptyText}</Typography>
                                     ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                            {files.map((f, i) => (
-                                                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: alpha('#ef4444', 0.05), borderRadius: 1.5, px: 1, py: 0.5 }}>
-                                                    <PictureAsPdfIcon sx={{ fontSize: 14, color: '#ef4444', flexShrink: 0 }} />
-                                                    <Tooltip title={f.name}>
-                                                        <Typography component="a" href={fixPdfUrl(f.url)} target="_blank"
-                                                            sx={{ fontSize: 11, fontWeight: 600, color: '#b91c1c', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
-                                                            {f.name}
-                                                        </Typography>
-                                                    </Tooltip>
-                                                    <IconButton size="small" disabled={deleting === f.path}
-                                                        onClick={() => handleDelete(column, f.path)}
-                                                        sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: '#ef4444' } }}>
-                                                        {deleting === f.path ? <CircularProgress size={12} /> : <DeleteIcon sx={{ fontSize: 14 }} />}
-                                                    </IconButton>
-                                                </Box>
-                                            ))}
+                                            {files.map((f, i) => {
+                                                const isFilePdf = f.name.toLowerCase().endsWith('.pdf');
+                                                return (
+                                                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: isFilePdf ? alpha('#ef4444', 0.05) : alpha('#2563eb', 0.05), borderRadius: 1.5, px: 1, py: 0.5 }}>
+                                                        {isFilePdf ? (
+                                                            <PictureAsPdfIcon sx={{ fontSize: 14, color: '#ef4444', flexShrink: 0 }} />
+                                                        ) : (
+                                                            <AttachFileIcon sx={{ fontSize: 14, color: '#2563eb', flexShrink: 0 }} />
+                                                        )}
+                                                        <Tooltip title={f.name}>
+                                                            <Typography component="a" href={fixPdfUrl(f.url)} target="_blank"
+                                                                sx={{ fontSize: 11, fontWeight: 600, color: isFilePdf ? '#b91c1c' : '#1d4ed8', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}>
+                                                                {f.name}
+                                                            </Typography>
+                                                        </Tooltip>
+                                                        <IconButton size="small" disabled={deleting === f.path}
+                                                            onClick={() => handleDelete(column, f.path)}
+                                                            sx={{ p: 0.25, color: 'text.disabled', '&:hover': { color: '#ef4444' } }}>
+                                                            {deleting === f.path ? <CircularProgress size={12} /> : <DeleteIcon sx={{ fontSize: 14 }} />}
+                                                        </IconButton>
+                                                    </Box>
+                                                );
+                                            })}
                                         </Box>
                                     )}
                                 </Box>

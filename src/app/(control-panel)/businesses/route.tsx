@@ -7,6 +7,7 @@ const TenderCostingPage       = lazy(() => import('./TenderCostingPage'));
 const ProjectMasterListPage   = lazy(() => import('./ProjectMasterListPage'));
 const TenderDashboardPage     = lazy(() => import('./TenderDashboardPage'));
 const LicenseTrackingPage     = lazy(() => import('./LicenseTrackingPage'));
+const SetupConfigPage         = lazy(() => import('./SetupConfigPage'));
 
 const routes: FuseRouteItemType[] = [
     {
@@ -42,6 +43,11 @@ const routes: FuseRouteItemType[] = [
     {
         path: 'businesses/license-tracking',
         element: <LicenseTrackingPage />,
+        auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
+    },
+    {
+        path: 'businesses/setup-config',
+        element: <SetupConfigPage />,
         auth: ['businesses', 'superadmin', 'admin', 'supervisor', 'business_admin', 'business_higher_admin']
     }
 ];

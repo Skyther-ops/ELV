@@ -12,7 +12,7 @@ import { usePduChecklists, useAddPduChecklist, useUpdatePduChecklist, useDeleteP
 import { motion, AnimatePresence } from "motion/react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type RcdStatus = "ON" | "OFF" | "";
+type RcdStatus = "✓" | "/" | "";
 interface RcdRow { id: string; onStatus: RcdStatus; offStatus: RcdStatus; }
 interface PduUnit { label: string; model: string; sn: string; rows: RcdRow[]; }
 interface SignatoryMeta {

@@ -290,10 +290,34 @@ export default function TenderDashboardPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        api.get('tenders').json<any[]>()
-            .then(data => setTenders(data.map(fromApi)))
-            .catch(console.error)
-            .finally(() => setLoading(false));
+        let active = true;
+
+        const fetchTenders = (isInitial = false) => {
+            if (isInitial) setLoading(true);
+            api.get('tenders').json<any[]>()
+                .then(data => {
+                    if (active) {
+                        setTenders(data.map(fromApi));
+                    }
+                })
+                .catch(console.error)
+                .finally(() => {
+                    if (isInitial && active) setLoading(false);
+                });
+        };
+
+        // Initial fetch
+        fetchTenders(true);
+
+        // Background polling every 4 seconds
+        const interval = setInterval(() => {
+            fetchTenders(false);
+        }, 4000);
+
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
     }, []);
 
     // ── Computed stats ────────────────────────────────────────────

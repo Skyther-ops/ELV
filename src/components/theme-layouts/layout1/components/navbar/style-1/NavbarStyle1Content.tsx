@@ -54,6 +54,33 @@ function NavbarStyle1Content(props: NavbarStyle1ContentProps) {
 	const role = Array.isArray(user?.role) ? user.role[0] : user?.role;
 	const isBoss = role === 'supervisor' || role === 'superadmin' || role === 'admin' || role === 'business_admin' || role === 'business_higher_admin';
 
+	let roleDisplayName = role ?? 'member';
+	let badgeColor = '#3b82f6';
+	let bgGradient = 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.08))';
+	let borderColor = 'rgba(59,130,246,0.3)';
+
+	if (role === 'superadmin' || role === 'admin') {
+		roleDisplayName = 'Director';
+		badgeColor = '#ef4444';
+		bgGradient = 'linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08))';
+		borderColor = 'rgba(239,68,68,0.3)';
+	} else if (role === 'business_higher_admin') {
+		roleDisplayName = 'General Manager';
+		badgeColor = '#a855f7';
+		bgGradient = 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(139,92,246,0.08))';
+		borderColor = 'rgba(168,85,247,0.3)';
+	} else if (role === 'business_admin') {
+		roleDisplayName = 'Project Manager';
+		badgeColor = '#10b981';
+		bgGradient = 'linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08))';
+		borderColor = 'rgba(16,185,129,0.3)';
+	} else if (role === 'businesses') {
+		roleDisplayName = 'Business Member';
+		badgeColor = '#f59e0b';
+		bgGradient = 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.08))';
+		borderColor = 'rgba(245,158,11,0.3)';
+	}
+
 	const filteredNavigation = navigationData;
 
 	return (
@@ -75,25 +102,24 @@ function NavbarStyle1Content(props: NavbarStyle1ContentProps) {
 					<div
 						className="flex items-center gap-2 px-3 py-2 rounded-xl w-full"
 						style={{
-							background: isBoss
-								? 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(139,92,246,0.08))'
-								: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(37,99,235,0.08))',
-							border: isBoss ? '1px solid rgba(168,85,247,0.3)' : '1px solid rgba(59,130,246,0.3)',
+							background: bgGradient,
+							border: `1px solid ${borderColor}`,
 						}}
 					>
-						{isBoss
-							? <SupervisorAccountIcon sx={{ fontSize: 18, color: '#a855f7' }} />
-							: <PersonIcon sx={{ fontSize: 18, color: '#3b82f6' }} />
-						}
+						{role === 'superadmin' || role === 'admin' || role === 'business_higher_admin' || role === 'business_admin' ? (
+							<SupervisorAccountIcon sx={{ fontSize: 18, color: badgeColor }} />
+						) : (
+							<PersonIcon sx={{ fontSize: 18, color: badgeColor }} />
+						)}
 						<div className="flex flex-col leading-tight">
 							<span
-								className="text-xs font-bold capitalize tracking-wide"
-								style={{ color: isBoss ? '#a855f7' : '#3b82f6' }}
+								className="text-xs font-bold tracking-wide"
+								style={{ color: badgeColor }}
 							>
-								{role ?? 'member'}
+								{roleDisplayName}
 							</span>
-							<span className="text-[10px] opacity-60" style={{ color: isBoss ? '#a855f7' : '#3b82f6' }}>
-								{['business_admin', 'business_higher_admin'].includes(role) ? 'Business supervisor' : (isBoss ? 'Full access' : 'View only (building)')}
+							<span className="text-[10px] opacity-60" style={{ color: badgeColor }}>
+								{role === 'superadmin' || role === 'admin' ? 'Full access' : ['business_admin', 'business_higher_admin'].includes(role) ? 'Business supervisor' : 'View only (building)'}
 							</span>
 						</div>
 					</div>

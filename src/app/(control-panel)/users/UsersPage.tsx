@@ -23,13 +23,13 @@ import { enqueueSnackbar } from 'notistack';
 import { formatDistanceToNow } from 'date-fns';
 
 const ROLES = {
-    superadmin: { label: 'Super Admin', chip: 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300', dot: 'bg-rose-500' },
+    superadmin: { label: 'Super Admin', chip: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', dot: 'bg-violet-500' },
     supervisor: { label: 'Supervisor', chip: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300', dot: 'bg-violet-500' },
     facilitator: { label: 'Facilitator', chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', dot: 'bg-amber-500' },
     member: { label: 'Member', chip: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300', dot: 'bg-sky-500' },
     businesses: { label: 'Business Member', chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', dot: 'bg-emerald-500' },
-    business_admin: { label: 'Business Admin', chip: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300', dot: 'bg-indigo-500' },
-    business_higher_admin: { label: 'Business Higher Admin', chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', dot: 'bg-teal-500' },
+    business_admin: { label: 'Project Manager', chip: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300', dot: 'bg-indigo-500' },
+    business_higher_admin: { label: 'General Manager', chip: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300', dot: 'bg-teal-500' },
 };
 
 function getRole(user: User): string {
@@ -215,7 +215,7 @@ export default function UsersPage() {
                                     : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'
                             }`}
                         >
-                            {r === 'all' ? 'All' : (r === 'superadmin' ? 'Super Admin' : r === 'business_admin' ? 'Business Admin' : r === 'business_higher_admin' ? 'Business Higher Admin' : r === 'businesses' ? 'Business Member' : r)}
+                            {r === 'all' ? 'All' : (ROLES[r as keyof typeof ROLES]?.label || r)}
                             <span className={`ml-1.5 text-[10px] font-black ${filterRole === r ? 'text-blue-600' : 'text-gray-400'}`}>
                                 {counts[r]}
                             </span>
@@ -386,13 +386,10 @@ export default function UsersPage() {
                         <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '13px' } }}>
                             <InputLabel>Role</InputLabel>
                             <Select value={form.role} label="Role" onChange={e => setForm({ ...form, role: e.target.value })}>
-                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="superadmin">Super Admin</MenuItem>}
-                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="supervisor">Supervisor</MenuItem>}
-                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="facilitator">Facilitator</MenuItem>}
-                                {!(isBusinessManager && !isGlobalManager) && <MenuItem value="member">Member</MenuItem>}
+                                <MenuItem value="superadmin">Super Admin</MenuItem>
                                 <MenuItem value="businesses">Business Member</MenuItem>
-                                <MenuItem value="business_admin">Business Admin</MenuItem>
-                                <MenuItem value="business_higher_admin">Business Higher Admin</MenuItem>
+                                <MenuItem value="business_admin">Project Manager</MenuItem>
+                                <MenuItem value="business_higher_admin">General Manager</MenuItem>
                             </Select>
                         </FormControl>
                     </div>
@@ -423,13 +420,10 @@ export default function UsersPage() {
                     <FormControl fullWidth size="small" sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: '13px' } }}>
                         <InputLabel>New Role</InputLabel>
                         <Select value={editRole} label="New Role" onChange={e => setEditRole(e.target.value)}>
-                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="superadmin">Super Admin</MenuItem>}
-                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="supervisor">Supervisor</MenuItem>}
-                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="facilitator">Facilitator</MenuItem>}
-                            {!(isBusinessManager && !isGlobalManager) && <MenuItem value="member">Member</MenuItem>}
+                            <MenuItem value="superadmin">Super Admin</MenuItem>
                             <MenuItem value="businesses">Business Member</MenuItem>
-                            <MenuItem value="business_admin">Business Admin</MenuItem>
-                            <MenuItem value="business_higher_admin">Business Higher Admin</MenuItem>
+                            <MenuItem value="business_admin">Project Manager</MenuItem>
+                            <MenuItem value="business_higher_admin">General Manager</MenuItem>
                         </Select>
                     </FormControl>
                 </DialogContent>

@@ -26,8 +26,8 @@ function PortalPage() {
     let displayRole = 'User';
     if (isSuperAdmin) displayRole = 'Super Admin';
     else if (isSupervisor) displayRole = 'System Supervisor';
-    else if (roleLower === 'business_admin') displayRole = 'Business Admin';
-    else if (roleLower === 'business_higher_admin') displayRole = 'Business Higher Admin';
+    else if (roleLower === 'business_admin') displayRole = 'Project Manager';
+    else if (roleLower === 'business_higher_admin') displayRole = 'General Manager';
     else if (isBusiness) displayRole = 'Business Partner';
     else if (isFacilitator) displayRole = 'SSDC Facilitator';
     else if (isMember) displayRole = 'Team Member';

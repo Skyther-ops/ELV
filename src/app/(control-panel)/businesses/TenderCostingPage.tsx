@@ -18,6 +18,8 @@ import MenuItem from '@mui/material/MenuItem';
 import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
 import TenderCostingReportDialog from './components/TenderCostingReportDialog';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import Checkbox from '@mui/material/Checkbox';
+import InputAdornment from '@mui/material/InputAdornment';
 
 const SUCCESS_RATES = [
     { value: '10% Submission', color: '#991b1b', bgcolor: '#fee2e2' },
@@ -53,20 +55,85 @@ export default function TenderCostingPage() {
 
     // New Item Form
     const [newItem, setNewItem] = useState({
-        item_name: '', quantity: 1, unit_cost: 0, unit_price: 0
+        item_name: '', details: '', quotation_breakdown: '', quantity: 1, unit_cost: 0, unit_price: 0, markup: 0, has_sst: false, has_costing_sst: false
     });
+
+    // Input text states for formatting
+    const [unitCostStr, setUnitCostStr] = useState('');
+    const [salesPriceStr, setSalesPriceStr] = useState('');
+    const [costPriceStr, setCostPriceStr] = useState('');
+
+    const parseCurrency = (val: string): number => {
+        const cleaned = val.replace(/,/g, '');
+        return cleaned === '' ? 0 : Number(cleaned);
+    };
+
+    const formatCurrency = (val: string | number): string => {
+        if (val === undefined || val === null || val === '') return '';
+        let clean = String(val).replace(/[^0-9.]/g, '');
+        const parts = clean.split('.');
+        if (parts.length > 2) {
+            clean = parts[0] + '.' + parts.slice(1).join('');
+        }
+        const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (clean.includes('.')) {
+            const decimalPart = parts[1] !== undefined ? parts[1].slice(0, 2) : '';
+            return `${integerPart}.${decimalPart}`;
+        }
+        return integerPart;
+    };
+
+    const handleNewItemCostChange = (costVal: number) => {
+        setNewItem(prev => {
+            const cost = costVal;
+            const price = cost * (1 + prev.markup / 100);
+            return {
+                ...prev,
+                unit_cost: cost,
+                unit_price: Number(price.toFixed(2))
+            };
+        });
+    };
+
+    const handleNewItemMarkupChange = (markupVal: number) => {
+        setNewItem(prev => {
+            const markup = markupVal;
+            const price = prev.unit_cost * (1 + markup / 100);
+            return {
+                ...prev,
+                markup: markup,
+                unit_price: Number(price.toFixed(2))
+            };
+        });
+    };
+
+    const handleNewItemPriceChange = (priceVal: number) => {
+        setNewItem(prev => {
+            const price = priceVal;
+            const markup = prev.unit_cost > 0 ? ((price - prev.unit_cost) / prev.unit_cost) * 100 : 0;
+            return {
+                ...prev,
+                unit_price: price,
+                markup: Number(markup.toFixed(2))
+            };
+        });
+    };
 
     useEffect(() => {
         if (id) {
             api.get(`tenders/${id}`).json().then(data => {
                 setTender(data);
+                const salesVal = (data as any).sales_price || '';
+                const costVal = (data as any).cost_price || '';
                 setForm({
                     internal_quotation: (data as any).internal_quotation || '',
-                    sales_price: (data as any).sales_price || '',
-                    cost_price: (data as any).cost_price || '',
+                    sales_price: String(salesVal),
+                    cost_price: String(costVal),
                     submission_date: (data as any).submission_date || '',
                     success_rate: (data as any).success_rate || ''
                 });
+                setSalesPriceStr(salesVal ? Number(salesVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+                setCostPriceStr(costVal ? Number(costVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
             }).catch(console.error);
 
             fetchItems();
@@ -86,8 +153,10 @@ export default function TenderCostingPage() {
                 success_rate: form.success_rate || null
             };
             if (items.length === 0) {
-                payload.sales_price = form.sales_price !== '' ? Number(form.sales_price) : null;
-                payload.cost_price = form.cost_price !== '' ? Number(form.cost_price) : null;
+                const rawSales = String(form.sales_price).replace(/,/g, '');
+                const rawCost = String(form.cost_price).replace(/,/g, '');
+                payload.sales_price = rawSales !== '' ? Number(rawSales) : null;
+                payload.cost_price = rawCost !== '' ? Number(rawCost) : null;
                 payload.margin = (payload.sales_price || 0) - (payload.cost_price || 0);
             }
 
@@ -110,13 +179,17 @@ export default function TenderCostingPage() {
 
     const handleCancelSummary = () => {
         if (tender) {
+            const salesVal = tender.sales_price || '';
+            const costVal = tender.cost_price || '';
             setForm({
                 internal_quotation: tender.internal_quotation || '',
-                sales_price: tender.sales_price || '',
-                cost_price: tender.cost_price || '',
+                sales_price: String(salesVal),
+                cost_price: String(costVal),
                 submission_date: tender.submission_date || '',
                 success_rate: tender.success_rate || ''
             });
+            setSalesPriceStr(salesVal ? Number(salesVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+            setCostPriceStr(costVal ? Number(costVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
         }
         setIsEditing(false);
     };
@@ -125,16 +198,87 @@ export default function TenderCostingPage() {
         if (!newItem.item_name) return;
         try {
             await api.post(`tenders/${id}/costing-items`, { json: newItem });
-            setNewItem({ item_name: '', quantity: 1, unit_cost: 0, unit_price: 0 });
+            setNewItem({ item_name: '', details: '', quotation_breakdown: '', quantity: 1, unit_cost: 0, unit_price: 0, markup: 0, has_sst: false, has_costing_sst: false });
+            setUnitCostStr('');
             fetchItems();
             // Refresh tender to get updated totals from backend calculation
             const updatedTender = await api.get(`tenders/${id}`).json();
             setTender(updatedTender);
+            const salesVal = (updatedTender as any).sales_price || '';
+            const costVal = (updatedTender as any).cost_price || '';
             setForm(prev => ({
                 ...prev, 
-                sales_price: (updatedTender as any).sales_price || '', 
-                cost_price: (updatedTender as any).cost_price || '' 
+                sales_price: String(salesVal), 
+                cost_price: String(costVal) 
             }));
+            setSalesPriceStr(salesVal ? Number(salesVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+            setCostPriceStr(costVal ? Number(costVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleUpdateItemField = async (item: any, fieldName: string, value: any) => {
+        if (item[fieldName] === value) return;
+        try {
+            const updatedItem = {
+                item_name: item.item_name,
+                details: item.details,
+                quotation_breakdown: item.quotation_breakdown,
+                supplier: item.supplier,
+                quantity: item.quantity,
+                unit_cost: item.unit_cost,
+                unit_price: item.unit_price,
+                has_sst: !!item.has_sst,
+                has_costing_sst: !!item.has_costing_sst,
+                [fieldName]: value
+            };
+            
+            await api.put(`tenders/${id}/costing-items/${item.id}`, {
+                json: updatedItem
+            });
+            
+            fetchItems();
+            const updatedTender = await api.get(`tenders/${id}`).json();
+            setTender(updatedTender);
+            const salesVal = (updatedTender as any).sales_price || '';
+            const costVal = (updatedTender as any).cost_price || '';
+            setForm(prev => ({
+                ...prev, 
+                sales_price: String(salesVal), 
+                cost_price: String(costVal) 
+            }));
+            setSalesPriceStr(salesVal ? Number(salesVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+            setCostPriceStr(costVal ? Number(costVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+        } catch (e) {
+            console.error("Failed to update item field:", e);
+        }
+    };
+
+    const handleToggleSst = async (item: any, field: 'has_sst' | 'has_costing_sst', checked: boolean) => {
+        try {
+            await api.put(`tenders/${id}/costing-items/${item.id}`, {
+                json: {
+                    item_name: item.item_name,
+                    quantity: item.quantity,
+                    unit_cost: item.unit_cost,
+                    unit_price: item.unit_price,
+                    has_sst: field === 'has_sst' ? checked : !!item.has_sst,
+                    has_costing_sst: field === 'has_costing_sst' ? checked : !!item.has_costing_sst
+                }
+            });
+            fetchItems();
+            const updatedTender = await api.get(`tenders/${id}`).json();
+            setTender(updatedTender);
+            const salesVal = (updatedTender as any).sales_price || '';
+            const costVal = (updatedTender as any).cost_price || '';
+            setForm(prev => ({
+                ...prev, 
+                sales_price: String(salesVal), 
+                cost_price: String(costVal) 
+            }));
+            setSalesPriceStr(salesVal ? Number(salesVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+            setCostPriceStr(costVal ? Number(costVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
         } catch (e) {
             console.error(e);
         }
@@ -147,11 +291,15 @@ export default function TenderCostingPage() {
             fetchItems();
             const updatedTender = await api.get(`tenders/${id}`).json();
             setTender(updatedTender);
+            const salesVal = (updatedTender as any).sales_price || '';
+            const costVal = (updatedTender as any).cost_price || '';
             setForm(prev => ({
                 ...prev, 
-                sales_price: (updatedTender as any).sales_price || '', 
-                cost_price: (updatedTender as any).cost_price || '' 
+                sales_price: String(salesVal), 
+                cost_price: String(costVal) 
             }));
+            setSalesPriceStr(salesVal ? Number(salesVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
+            setCostPriceStr(costVal ? Number(costVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '');
         } catch (e) {
             console.error(e);
         }
@@ -242,22 +390,46 @@ export default function TenderCostingPage() {
                                         </td>
                                         <td style={{ padding: '12px 16px', borderRight: `1px solid ${theme.palette.divider}` }}>
                                             {isEditing && items.length === 0 ? (
-                                                <TextField size="small" fullWidth type="number" value={form.sales_price} onChange={e => setForm({ ...form, sales_price: e.target.value })}
+                                                <TextField size="small" fullWidth value={salesPriceStr}
+                                                    onChange={e => {
+                                                        const formatted = formatCurrency(e.target.value);
+                                                        setSalesPriceStr(formatted);
+                                                        setForm({ ...form, sales_price: String(parseCurrency(formatted)) });
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (salesPriceStr) {
+                                                            const parsed = parseCurrency(salesPriceStr);
+                                                            setSalesPriceStr(parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                                                            setForm(prev => ({ ...prev, sales_price: String(parsed) }));
+                                                        }
+                                                    }}
                                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5, fontSize: 14 } }} />
                                             ) : (
                                                 <Typography variant="body2" fontWeight={600} sx={{ color: items.length > 0 && isEditing ? 'text.disabled' : 'inherit' }}>
-                                                    {tender.sales_price ? `RM ${Number(tender.sales_price).toLocaleString()}` : '—'}
+                                                    {tender.sales_price ? `RM ${Number(tender.sales_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                                                     {items.length > 0 && isEditing && <span style={{display:'block', fontSize: 10, fontWeight: 400}}>Auto-calculated from items</span>}
                                                 </Typography>
                                             )}
                                         </td>
                                         <td style={{ padding: '12px 16px', borderRight: `1px solid ${theme.palette.divider}` }}>
                                             {isEditing && items.length === 0 ? (
-                                                <TextField size="small" fullWidth type="number" value={form.cost_price} onChange={e => setForm({ ...form, cost_price: e.target.value })}
+                                                <TextField size="small" fullWidth value={costPriceStr}
+                                                    onChange={e => {
+                                                        const formatted = formatCurrency(e.target.value);
+                                                        setCostPriceStr(formatted);
+                                                        setForm({ ...form, cost_price: String(parseCurrency(formatted)) });
+                                                    }}
+                                                    onBlur={() => {
+                                                        if (costPriceStr) {
+                                                            const parsed = parseCurrency(costPriceStr);
+                                                            setCostPriceStr(parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                                                            setForm(prev => ({ ...prev, cost_price: String(parsed) }));
+                                                        }
+                                                    }}
                                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5, fontSize: 14 } }} />
                                             ) : (
                                                 <Typography variant="body2" fontWeight={600} sx={{ color: items.length > 0 && isEditing ? 'text.disabled' : 'inherit' }}>
-                                                    {tender.cost_price ? `RM ${Number(tender.cost_price).toLocaleString()}` : '—'}
+                                                    {tender.cost_price ? `RM ${Number(tender.cost_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
                                                     {items.length > 0 && isEditing && <span style={{display:'block', fontSize: 10, fontWeight: 400}}>Auto-calculated from items</span>}
                                                 </Typography>
                                             )}
@@ -265,7 +437,7 @@ export default function TenderCostingPage() {
                                         <td style={{ padding: '12px 16px', borderRight: `1px solid ${theme.palette.divider}` }}>
                                             <Box>
                                                 <Typography variant="body2" fontWeight={700} sx={{ color: margin >= 0 ? '#10b981' : '#ef4444' }}>
-                                                    RM {margin.toLocaleString()}
+                                                    RM {margin.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </Typography>
                                                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>{marginPercent}%</Typography>
                                             </Box>
@@ -319,19 +491,23 @@ export default function TenderCostingPage() {
 
                         {/* Costing Items Table */}
                         <Typography variant="h6" fontWeight={800} letterSpacing="-0.5px" mb={2}>Costing Items Breakdown</Typography>
-                        <Box sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
-                            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                        <Box sx={{ borderRadius: 2, overflowX: 'auto', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+                            <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: '1500px' }}>
                                 <thead>
                                     <tr>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Item Name</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '80px' }}>Qty</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Unit Cost (RM)</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Unit Price (RM)</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Total Cost (RM)</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Total Price (RM)</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Markup (%)</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>Margin (%)</th>
-                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}` }}>GP (RM)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '280px' }}>Specification</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '220px' }}>Details</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '220px' }}>Quotation Breakdown</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '100px' }}>Qty</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '140px' }}>Unit Cost (RM)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '120px' }}>Total Cost (RM)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '90px' }}>Cost SST</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '140px' }}>Unit Price (RM)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '120px' }}>Total Price (RM)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '90px' }}>Sales SST</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '110px' }}>Markup (%)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '100px' }}>Margin (%)</th>
+                                        <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'left', borderBottom: `1px solid ${theme.palette.divider}`, width: '120px' }}>GP (RM)</th>
                                         <th style={{ padding: '12px 16px', background: isDark ? '#1e293b' : '#f8fafc', color: theme.palette.text.secondary, fontSize: 13, fontWeight: 600, textAlign: 'center', borderBottom: `1px solid ${theme.palette.divider}`, width: '60px' }}></th>
                                     </tr>
                                 </thead>
@@ -344,15 +520,79 @@ export default function TenderCostingPage() {
                                         const margin = totalPrice > 0 ? (gp / totalPrice) * 100 : 0;
                                         return (
                                         <tr key={item.id}>
-                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{item.item_name}</td>
+                                            {/* Specification (Item Name) - Editable, Long Text */}
+                                            <td style={{ padding: '4px 8px', borderBottom: `1px solid ${theme.palette.divider}`, width: '280px' }}>
+                                                <TextField
+                                                    multiline
+                                                    fullWidth
+                                                    disabled={!canEdit}
+                                                    defaultValue={item.item_name}
+                                                    onBlur={e => handleUpdateItemField(item, 'item_name', e.target.value)}
+                                                    sx={{
+                                                        '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                                                        '&:hover .MuiOutlinedInput-notchedOutline': { border: isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.1)' },
+                                                        '& .MuiOutlinedInput-root': { padding: '4px 8px', fontSize: 13 }
+                                                    }}
+                                                />
+                                            </td>
+                                            {/* Details - Editable, Long Text */}
+                                            <td style={{ padding: '4px 8px', borderBottom: `1px solid ${theme.palette.divider}`, width: '220px' }}>
+                                                <TextField
+                                                    multiline
+                                                    fullWidth
+                                                    disabled={!canEdit}
+                                                    defaultValue={item.details || ''}
+                                                    placeholder={canEdit ? "Add details..." : "—"}
+                                                    onBlur={e => handleUpdateItemField(item, 'details', e.target.value)}
+                                                    sx={{
+                                                        '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                                                        '&:hover .MuiOutlinedInput-notchedOutline': { border: isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.1)' },
+                                                        '& .MuiOutlinedInput-root': { padding: '4px 8px', fontSize: 13 }
+                                                    }}
+                                                />
+                                            </td>
+                                            {/* Quotation Breakdown - Editable, Long Text */}
+                                            <td style={{ padding: '4px 8px', borderBottom: `1px solid ${theme.palette.divider}`, width: '220px' }}>
+                                                <TextField
+                                                    multiline
+                                                    fullWidth
+                                                    disabled={!canEdit}
+                                                    defaultValue={item.quotation_breakdown || ''}
+                                                    placeholder={canEdit ? "Add breakdown..." : "—"}
+                                                    onBlur={e => handleUpdateItemField(item, 'quotation_breakdown', e.target.value)}
+                                                    sx={{
+                                                        '& .MuiOutlinedInput-notchedOutline': { border: 'none' },
+                                                        '&:hover .MuiOutlinedInput-notchedOutline': { border: isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid rgba(0,0,0,0.1)' },
+                                                        '& .MuiOutlinedInput-root': { padding: '4px 8px', fontSize: 13 }
+                                                    }}
+                                                />
+                                            </td>
                                             <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{item.quantity}</td>
-                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{Number(item.unit_cost).toLocaleString()}</td>
-                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{Number(item.unit_price).toLocaleString()}</td>
-                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14, fontWeight: 600 }}>{totalCost.toLocaleString()}</td>
-                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14, fontWeight: 600, color: '#10b981' }}>{totalPrice.toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{Number(item.unit_cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14, fontWeight: 600 }}>{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td style={{ padding: '6px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                <Checkbox
+                                                    checked={!!item.has_costing_sst}
+                                                    disabled={!canEdit}
+                                                    onChange={e => handleToggleSst(item, 'has_costing_sst', e.target.checked)}
+                                                    size="small"
+                                                    sx={{ p: 0.5 }}
+                                                />
+                                            </td>
+                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14, fontWeight: 600, color: '#10b981' }}>{totalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                            <td style={{ padding: '6px 16px', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                                                <Checkbox
+                                                    checked={!!item.has_sst}
+                                                    disabled={!canEdit}
+                                                    onChange={e => handleToggleSst(item, 'has_sst', e.target.checked)}
+                                                    size="small"
+                                                    sx={{ p: 0.5 }}
+                                                />
+                                            </td>
                                             <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{markup.toFixed(2)}%</td>
                                             <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14 }}>{margin.toFixed(2)}%</td>
-                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14, fontWeight: 600, color: gp >= 0 ? '#10b981' : '#ef4444' }}>{gp.toLocaleString()}</td>
+                                            <td style={{ padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, fontSize: 14, fontWeight: 600, color: gp >= 0 ? '#10b981' : '#ef4444' }}>{gp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                             <td style={{ padding: '8px', borderBottom: `1px solid ${theme.palette.divider}`, textAlign: 'center' }}>
                                                 {canEdit && (
                                                     <IconButton size="small" color="error" onClick={() => handleDeleteItem(item.id)}>
@@ -365,53 +605,130 @@ export default function TenderCostingPage() {
                                     
                                     {/* Add New Item Row */}
                                     {canEdit && (() => {
-                                        const newTotalCost = newItem.quantity * newItem.unit_cost;
-                                        const newTotalPrice = newItem.quantity * newItem.unit_price;
-                                        const newGp = newTotalPrice - newTotalCost;
-                                        const newMarkup = newTotalCost > 0 ? (newGp / newTotalCost) * 100 : 0;
-                                        const newMargin = newTotalPrice > 0 ? (newGp / newTotalPrice) * 100 : 0;
-                                        return (
-                                        <tr style={{ background: isDark ? '#1e293b' : '#f8fafc' }}>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <TextField size="small" fullWidth placeholder="Item name..." 
-                                                value={newItem.item_name} onChange={e => setNewItem({...newItem, item_name: e.target.value})}
-                                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }} />
-                                        </td>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <TextField size="small" fullWidth type="number" 
-                                                value={newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})}
-                                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }} />
-                                        </td>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <TextField size="small" fullWidth type="number" 
-                                                value={newItem.unit_cost} onChange={e => setNewItem({...newItem, unit_cost: Number(e.target.value)})}
-                                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }} />
-                                        </td>
-                                        <td style={{ padding: '12px 16px' }}>
-                                            <TextField size="small" fullWidth type="number" 
-                                                value={newItem.unit_price} onChange={e => setNewItem({...newItem, unit_price: Number(e.target.value)})}
-                                                sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }} />
-                                        </td>
-                                        <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 600 }}>
-                                            {newTotalCost.toLocaleString()}
-                                        </td>
-                                        <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 600, color: '#10b981' }}>
-                                            {newTotalPrice.toLocaleString()}
-                                        </td>
-                                        <td style={{ padding: '12px 16px', fontSize: 14 }}>{newMarkup.toFixed(2)}%</td>
-                                        <td style={{ padding: '12px 16px', fontSize: 14 }}>{newMargin.toFixed(2)}%</td>
-                                        <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 600, color: newGp >= 0 ? '#10b981' : '#ef4444' }}>
-                                            {newGp.toLocaleString()}
-                                        </td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                            <IconButton size="small" sx={{ bgcolor: '#2563eb', color: '#fff', '&:hover': { bgcolor: '#1d4ed8' } }} 
-                                                onClick={handleAddItem} disabled={!newItem.item_name}>
-                                                <AddIcon fontSize="small" />
-                                            </IconButton>
-                                        </td>
-                                    </tr>
-                                    );
-                                    })()}
+                                         const newTotalCost = newItem.quantity * newItem.unit_cost;
+                                         const newTotalPrice = newItem.quantity * newItem.unit_price;
+                                         const newGp = newTotalPrice - newTotalCost;
+                                         const newMargin = newTotalPrice > 0 ? (newGp / newTotalPrice) * 100 : 0;
+                                         return (
+                                         <tr style={{ background: isDark ? '#1e293b' : '#f8fafc' }}>
+                                         {/* Specification (Item Name) Input - Multi-line */}
+                                         <td style={{ padding: '8px 12px', width: '280px' }}>
+                                             <TextField
+                                                 multiline
+                                                 minRows={1}
+                                                 maxRows={4}
+                                                 size="small"
+                                                 fullWidth
+                                                 placeholder="Specification (long text)..."
+                                                 value={newItem.item_name}
+                                                 onChange={e => setNewItem({...newItem, item_name: e.target.value})}
+                                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }}
+                                             />
+                                         </td>
+                                         {/* Details Input - Multi-line */}
+                                         <td style={{ padding: '8px 12px', width: '220px' }}>
+                                             <TextField
+                                                 multiline
+                                                 minRows={1}
+                                                 maxRows={4}
+                                                 size="small"
+                                                 fullWidth
+                                                 placeholder="Details..."
+                                                 value={newItem.details}
+                                                 onChange={e => setNewItem({...newItem, details: e.target.value})}
+                                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }}
+                                             />
+                                         </td>
+                                         {/* Quotation Breakdown Input - Multi-line */}
+                                         <td style={{ padding: '8px 12px', width: '220px' }}>
+                                             <TextField
+                                                 multiline
+                                                 minRows={1}
+                                                 maxRows={4}
+                                                 size="small"
+                                                 fullWidth
+                                                 placeholder="Breakdown..."
+                                                 value={newItem.quotation_breakdown}
+                                                 onChange={e => setNewItem({...newItem, quotation_breakdown: e.target.value})}
+                                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }}
+                                             />
+                                         </td>
+                                         <td style={{ padding: '8px 8px', minWidth: '90px', width: '100px' }}>
+                                             <TextField size="small" fullWidth type="number" 
+                                                 value={newItem.quantity === 0 ? '' : newItem.quantity} onChange={e => setNewItem({...newItem, quantity: Number(e.target.value)})} onFocus={e => e.target.select()}
+                                                 sx={{ 
+                                                     '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 },
+                                                     '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
+                                                         '-webkit-appearance': 'none',
+                                                         margin: 0
+                                                     },
+                                                     '& input[type=number]': {
+                                                         '-moz-appearance': 'textfield'
+                                                     }
+                                                 }} />
+                                         </td>
+                                         <td style={{ padding: '8px 8px', minWidth: '130px', width: '140px' }}>
+                                             <TextField size="small" fullWidth 
+                                                 value={unitCostStr} onChange={e => { const formatted = formatCurrency(e.target.value); setUnitCostStr(formatted); handleNewItemCostChange(parseCurrency(formatted)); }} onBlur={() => { if (unitCostStr) { const parsed = parseCurrency(unitCostStr); setUnitCostStr(parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })); } }} onFocus={e => e.target.select()}
+                                                 slotProps={{ input: { startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { fontSize: 12 } }}>RM</InputAdornment> } }}
+                                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 } }} />
+                                         </td>
+                                         <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 600 }}>
+                                             {newTotalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                         </td>
+                                         <td style={{ padding: '6px 16px', textAlign: 'center' }}>
+                                             <Checkbox
+                                                 checked={newItem.has_costing_sst}
+                                                 onChange={e => setNewItem({ ...newItem, has_costing_sst: e.target.checked })}
+                                                 size="small"
+                                                 sx={{ p: 0.5 }}
+                                             />
+                                         </td>
+                                         <td style={{ padding: '8px 8px', minWidth: '130px', width: '140px' }}>
+                                             <TextField size="small" fullWidth 
+                                                 value={newItem.unit_price === 0 ? '' : newItem.unit_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                 slotProps={{ input: { readOnly: true, startAdornment: <InputAdornment position="start" sx={{ '& .MuiTypography-root': { fontSize: 12 } }}>RM</InputAdornment> } }}
+                                                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: isDark ? '#334155' : '#f1f5f9', fontSize: 13 } }} />
+                                         </td>
+                                         <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 600, color: '#10b981' }}>
+                                             {newTotalPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                         </td>
+                                         <td style={{ padding: '6px 16px', textAlign: 'center' }}>
+                                             <Checkbox
+                                                 checked={newItem.has_sst}
+                                                 onChange={e => setNewItem({ ...newItem, has_sst: e.target.checked })}
+                                                 size="small"
+                                                 sx={{ p: 0.5 }}
+                                             />
+                                         </td>
+                                         <td style={{ padding: '8px 8px', minWidth: '100px', width: '110px' }}>
+                                             <TextField size="small" fullWidth type="number" 
+                                                 value={newItem.markup === 0 ? '' : newItem.markup} onChange={e => handleNewItemMarkupChange(Number(e.target.value))} onFocus={e => e.target.select()}
+                                                 slotProps={{ input: { endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontSize: 12 } }}>%</InputAdornment> } }}
+                                                 sx={{ 
+                                                     '& .MuiOutlinedInput-root': { bgcolor: 'background.paper', fontSize: 13 },
+                                                     '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
+                                                         '-webkit-appearance': 'none',
+                                                         margin: 0
+                                                     },
+                                                     '& input[type=number]': {
+                                                         '-moz-appearance': 'textfield'
+                                                     }
+                                                 }} />
+                                         </td>
+                                         <td style={{ padding: '12px 16px', fontSize: 14 }}>{newMargin.toFixed(2)}%</td>
+                                         <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 600, color: newGp >= 0 ? '#10b981' : '#ef4444' }}>
+                                             {newGp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                         </td>
+                                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                             <IconButton size="small" sx={{ bgcolor: '#2563eb', color: '#fff', '&:hover': { bgcolor: '#1d4ed8' } }} 
+                                                 onClick={handleAddItem} disabled={!newItem.item_name}>
+                                                 <AddIcon fontSize="small" />
+                                             </IconButton>
+                                         </td>
+                                     </tr>
+                                     );
+                                     })()}
                                 </tbody>
                             </table>
                         </Box>

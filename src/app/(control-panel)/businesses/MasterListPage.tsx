@@ -21,16 +21,18 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import EmailIcon from '@mui/icons-material/Email';
 import PhoneIcon from '@mui/icons-material/Phone';
+import PersonIcon from '@mui/icons-material/Person';
 import { motion, AnimatePresence } from 'motion/react';
 import { useMasterList, MasterListCategory, MasterListItem } from './context/MasterListContext';
 
 const CATEGORIES: { id: MasterListCategory; label: string; icon: string; hasContact: boolean; hasItems?: boolean }[] = [
-    { id: 'status',      label: 'Status',       icon: '🔵', hasContact: false },
-    { id: 'type',        label: 'Type',         icon: '🏷️', hasContact: false },
-    { id: 'agencyTypes', label: 'Agency Types', icon: '🏛️', hasContact: true  },
-    { id: 'company',     label: 'Company',      icon: '🏢', hasContact: true  },
-    { id: 'customer',    label: 'Customer',     icon: '👤', hasContact: true  },
-    { id: 'supplier',    label: 'Supplier',     icon: '📦', hasContact: true, hasItems: true },
+    { id: 'status',           label: 'Status',            icon: '🔵', hasContact: false },
+    { id: 'type',             label: 'Type',              icon: '🏷️', hasContact: false },
+    { id: 'agencyTypes',      label: 'Agency Types',      icon: '🏛️', hasContact: true  },
+    { id: 'company',          label: 'Company',           icon: '🏢', hasContact: true  },
+    { id: 'customer',         label: 'Customer',          icon: '👤', hasContact: true  },
+    { id: 'supplier',         label: 'Supplier',          icon: '📦', hasContact: true, hasItems: true },
+    { id: 'quotationVersion', label: 'Quotation Version', icon: '📄', hasContact: false },
 ];
 
 // ── Colour picker ─────────────────────────────────────────────────
@@ -67,7 +69,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
 
 // ── Hover tooltip content ─────────────────────────────────────────
 function ContactTooltipContent({ item }: { item: MasterListItem }) {
-    const hasAny = item.email || item.contact1 || item.contact2 || item.contact3;
+    const hasAny = item.email || item.contact1 || item.contact2 || item.contact3 || item.picName || item.picPhone || item.picEmail;
     if (!hasAny) return (
         <Box sx={{ p: 0.5 }}>
             <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>No contact info saved</Typography>
@@ -85,18 +87,54 @@ function ContactTooltipContent({ item }: { item: MasterListItem }) {
                     </Typography>
                 </Box>
             )}
-            {item.email && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
-                    <EmailIcon sx={{ fontSize: 12, color: '#93c5fd' }} />
-                    <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11 }}>{item.email}</Typography>
+
+            {/* Company Contacts */}
+            {(item.email || item.contact1 || item.contact2 || item.contact3) && (
+                <Box sx={{ mb: 1 }}>
+                    <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: 9, display: 'block', textTransform: 'uppercase', fontWeight: 700, mb: 0.5 }}>
+                        Company Contacts
+                    </Typography>
+                    {item.email && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+                            <EmailIcon sx={{ fontSize: 12, color: '#93c5fd' }} />
+                            <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11 }}>{item.email}</Typography>
+                        </Box>
+                    )}
+                    {[item.contact1, item.contact2, item.contact3].filter(Boolean).map((c, i) => (
+                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
+                            <PhoneIcon sx={{ fontSize: 12, color: '#86efac' }} />
+                            <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11 }}>{c}</Typography>
+                        </Box>
+                    ))}
                 </Box>
             )}
-            {[item.contact1, item.contact2, item.contact3].filter(Boolean).map((c, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
-                    <PhoneIcon sx={{ fontSize: 12, color: '#86efac' }} />
-                    <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11 }}>{c}</Typography>
+
+            {/* PIC Contacts */}
+            {(item.picName || item.picPhone || item.picEmail) && (
+                <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: 9, display: 'block', textTransform: 'uppercase', fontWeight: 700, mb: 0.5 }}>
+                        Person In Charge (PIC)
+                    </Typography>
+                    {item.picName && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
+                            <PersonIcon sx={{ fontSize: 12, color: '#fb7185' }} />
+                            <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11, fontWeight: 700 }}>{item.picName}</Typography>
+                        </Box>
+                    )}
+                    {item.picPhone && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
+                            <PhoneIcon sx={{ fontSize: 12, color: '#fb7185' }} />
+                            <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11 }}>{item.picPhone}</Typography>
+                        </Box>
+                    )}
+                    {item.picEmail && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
+                            <EmailIcon sx={{ fontSize: 12, color: '#fda4af' }} />
+                            <Typography variant="caption" sx={{ color: '#e2e8f0', fontSize: 11 }}>{item.picEmail}</Typography>
+                        </Box>
+                    )}
                 </Box>
-            ))}
+            )}
         </Box>
     );
 }
@@ -117,6 +155,9 @@ function ItemDialog({ open, item, hasContact, hasItems, onClose, onSave }: {
     const [contact1, setContact1] = useState(item?.contact1 ?? '');
     const [contact2, setContact2] = useState(item?.contact2 ?? '');
     const [contact3, setContact3] = useState(item?.contact3 ?? '');
+    const [picName,  setPicName]  = useState(item?.picName  ?? '');
+    const [picPhone, setPicPhone] = useState(item?.picPhone ?? '');
+    const [picEmail, setPicEmail] = useState(item?.picEmail ?? '');
     const [itemsSupplied, setItemsSupplied] = useState(item?.itemsSupplied ?? '');
 
     const isEdit = !!item?.id;
@@ -125,7 +166,15 @@ function ItemDialog({ open, item, hasContact, hasItems, onClose, onSave }: {
         if (!label.trim()) return;
         onSave({
             label: label.trim(), color, textColor: color ? textColor : '#000000',
-            ...(hasContact ? { email: email.trim(), contact1: contact1.trim(), contact2: contact2.trim(), contact3: contact3.trim() } : {}),
+            ...(hasContact ? {
+                email: email.trim(),
+                contact1: contact1.trim(),
+                contact2: contact2.trim(),
+                contact3: contact3.trim(),
+                picName: picName.trim(),
+                picPhone: picPhone.trim(),
+                picEmail: picEmail.trim(),
+            } : {}),
             ...(hasItems ? { itemsSupplied: itemsSupplied.trim() } : {})
         });
     };
@@ -171,6 +220,32 @@ function ItemDialog({ open, item, hasContact, hasItems, onClose, onSave }: {
                                 <TextField fullWidth size="small" label="Contact 3 (Name & No.)" value={contact3}
                                     onChange={e => setContact3(e.target.value)}
                                     InputProps={{ startAdornment: <PhoneIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.75 }} /> }}
+                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                            </Grid>
+                        </Grid>
+
+                        <Divider sx={{ mb: 2 }}>
+                            <Typography variant="caption" color="text.disabled" fontWeight={700} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                Person In Charge (PIC) Details
+                            </Typography>
+                        </Divider>
+                        <Grid container spacing={2} sx={{ mb: 2.5 }}>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField fullWidth size="small" label="PIC Name" value={picName}
+                                    onChange={e => setPicName(e.target.value)}
+                                    InputProps={{ startAdornment: <PersonIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.75 }} /> }}
+                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField fullWidth size="small" label="PIC Contact No." value={picPhone}
+                                    onChange={e => setPicPhone(e.target.value)}
+                                    InputProps={{ startAdornment: <PhoneIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.75 }} /> }}
+                                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField fullWidth size="small" label="PIC Email" type="email" value={picEmail}
+                                    onChange={e => setPicEmail(e.target.value)}
+                                    InputProps={{ startAdornment: <EmailIcon sx={{ fontSize: 16, color: 'text.disabled', mr: 0.75 }} /> }}
                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
                             </Grid>
                         </Grid>

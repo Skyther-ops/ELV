@@ -88,7 +88,7 @@ const COLS = [
 const EMPTY: Omit<License,'id'|'daysRemaining'> = {
     tenderId: undefined, company:'', projectCode:'', doNo:'', quotationNo:'',
     clientName:'', productName:'', serialNo:'', startDate:'', expiryDate:'',
-    validityPeriod:'', acknowledged: false,
+    validityPeriod:'', acknowledged: false, completed: false,
 };
 
 function getDaysColor(d: number | null) {
@@ -286,7 +286,8 @@ function WarningDialog({ licenses, open, onClose, onAcknowledge }: {
 export default function LicenseTrackingPage() {
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
-    const { user: currentUser } = useAuth();
+    const { authState } = useAuth();
+    const currentUser = authState?.user;
     const role = (currentUser as any)?.role;
     const userRoles = Array.isArray(role) ? role : [role];
     const isSuperAdmin = userRoles.includes('superadmin');

@@ -11,13 +11,16 @@ export type MasterListItem = {
     contact2?: string;
     contact3?: string;
     itemsSupplied?: string;
+    picName?: string;
+    picPhone?: string;
+    picEmail?: string;
 };
 
-export type MasterListCategory = 'status' | 'type' | 'agencyTypes' | 'company' | 'customer' | 'supplier';
+export type MasterListCategory = 'status' | 'type' | 'agencyTypes' | 'company' | 'customer' | 'supplier' | 'quotationVersion';
 
 export type MasterListData = Record<MasterListCategory, MasterListItem[]>;
 
-const EMPTY: MasterListData = { status: [], type: [], agencyTypes: [], company: [], customer: [], supplier: [] };
+const EMPTY: MasterListData = { status: [], type: [], agencyTypes: [], company: [], customer: [], supplier: [], quotationVersion: [] };
 
 // Map frontend camelCase keys → DB snake_case and back
 function toFrontend(raw: any): MasterListItem {
@@ -31,6 +34,9 @@ function toFrontend(raw: any): MasterListItem {
         contact2:  raw.contact2  ?? undefined,
         contact3:  raw.contact3  ?? undefined,
         itemsSupplied: raw.items_supplied ?? undefined,
+        picName:   raw.pic_name  ?? undefined,
+        picPhone:  raw.pic_phone ?? undefined,
+        picEmail:  raw.pic_email ?? undefined,
     };
 }
 
@@ -44,6 +50,9 @@ function toPayload(item: Omit<MasterListItem, 'id'>) {
         contact2:   item.contact2  || null,
         contact3:   item.contact3  || null,
         items_supplied: item.itemsSupplied || null,
+        pic_name:   item.picName   || null,
+        pic_phone:  item.picPhone  || null,
+        pic_email:  item.picEmail  || null,
     };
 }
 
@@ -74,6 +83,7 @@ export function MasterListProvider({ children }: { children: ReactNode }) {
                     company:     (raw.company     ?? []).map(toFrontend),
                     customer:    (raw.customer    ?? []).map(toFrontend),
                     supplier:    (raw.supplier    ?? []).map(toFrontend),
+                    quotationVersion: (raw.quotationVersion ?? []).map(toFrontend),
                 };
                 setData(mapped);
             })

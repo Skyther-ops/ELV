@@ -39,6 +39,8 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import SendIcon from '@mui/icons-material/Send';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import { useMasterList, MasterListItem } from './context/MasterListContext';
 import { useNavigate } from 'react-router';
 import useAuth from '@fuse/core/FuseAuthProvider/useAuth';
@@ -81,9 +83,10 @@ export type Tender = {
     approver_signature?: string;
     verifier?: { id: number, name: string };
     approver?: { id: number, name: string };
+    quotationVersion?: string;
+    quotationVersions?: { version: string; description: string }[];
 };
 
-// ── Column definitions ────────────────────────────────────────────
 const COLUMNS = [
     { id: 'date',              label: 'Date',               width: 90  },
     { id: 'projectCode',       label: 'Project Code / No',  width: 140 },
@@ -365,7 +368,9 @@ const EMPTY_TENDER: Omit<Tender, 'id'> = {
     supplier: '', agencyTypes: '', projectTitle: '', personInCharge: '', contactNo: '',
     email: '', internalQuotation: '',
     salesPrice: undefined, costPrice: undefined, margin: undefined,
-    submissionDate: '', successRate: ''
+    submissionDate: '', successRate: '',
+    quotationVersion: '01',
+    quotationVersions: []
 };
 
 function generateNextProjectCode(tenders: Tender[]): string {
@@ -384,28 +389,35 @@ function generateNextProjectCode(tenders: Tender[]): string {
     return `P${String(max + 1).padStart(3, '0')}${suffix}`;
 }
 
-function generateNextInternalQuotation(company: string, tenders: Tender[], dateStr?: string): string {
+function generateNextInternalQuotation(company: string, tenders: Tender[], dateStr?: string, activeVersion: string = '01'): string {
     if (!company) return '';
     const prefix = company.toUpperCase();
     const d = dateStr ? new Date(dateStr) : new Date();
     const now = isNaN(d.getTime()) ? new Date() : d;
     const year = now.getFullYear();
-    const day = String(now.getDate()).padStart(2, '0');
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const suffix = `/${year}/${day}/${month}`;
     
     let max = 0;
-    const regex = new RegExp(`^${prefix}(\\d+)/${year}`);
+    const regexNew = new RegExp(`^${prefix}/${year}/(\\d+)`);
+    const regexOld = new RegExp(`^${prefix}(\\d+)/${year}`);
+    
     for (const t of tenders) {
-        if (t.internalQuotation && t.internalQuotation.startsWith(prefix)) {
-            const match = t.internalQuotation.match(regex);
+        if (t.internalQuotation) {
+            let match = t.internalQuotation.match(regexNew);
             if (match) {
                 const num = parseInt(match[1], 10);
                 if (num > max) max = num;
+            } else {
+                match = t.internalQuotation.match(regexOld);
+                if (match) {
+                    const num = parseInt(match[1], 10);
+                    if (num > max) max = num;
+                }
             }
         }
     }
-    return `${prefix}${String(max + 1).padStart(3, '0')}${suffix}`;
+    const nextNumStr = String(max + 1).padStart(3, '0');
+    const versionStr = String(activeVersion).padStart(2, '0');
+    return `${prefix}/${year}/${nextNumStr}/${versionStr}`;
 }
 
 function TenderDialog({ open, initial, allTenders, saving, onClose, onSave }: {
@@ -424,27 +436,83 @@ function TenderDialog({ open, initial, allTenders, saving, onClose, onSave }: {
     const isEdit = !!initial;
     const canSave = form.projectTitle.trim() || form.projectCode.trim();
 
+    const versions = form.quotationVersions || [];
+
+    const handleAddVersion = () => {
+        const nextNum = versions.length + 1;
+        const newVerStr = String(nextNum).padStart(2, '0');
+        const updated = [...versions, { version: newVerStr, description: '' }];
+        setForm(p => ({ ...p, quotationVersions: updated }));
+    };
+
+    const handleUpdateVersion = (index: number, field: 'version' | 'description', val: string) => {
+        const updated = versions.map((v, i) => {
+            if (i === index) {
+                return { ...v, [field]: val };
+            }
+            return v;
+        });
+        setForm(p => ({ ...p, quotationVersions: updated }));
+    };
+
+    const handleDeleteVersion = (index: number) => {
+        const updated = versions.filter((_, i) => i !== index);
+        setForm(p => ({ ...p, quotationVersions: updated }));
+    };
+
+    const handleSetActiveVersion = (verCode: string) => {
+        const paddedVersion = String(verCode).padStart(2, '0');
+        setForm(p => {
+            let nextIq = p.internalQuotation;
+            if (p.company) {
+                const prefix = p.company.toUpperCase();
+                const d = p.date ? new Date(p.date) : new Date();
+                const year = isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+                const parts = p.internalQuotation.split('/');
+                if (parts.length === 4 && parts[0] === prefix && parts[1] === String(year)) {
+                    parts[3] = paddedVersion;
+                    nextIq = parts.join('/');
+                } else {
+                    nextIq = generateNextInternalQuotation(p.company, allTenders, p.date, paddedVersion);
+                }
+            }
+            return {
+                ...p,
+                quotationVersion: paddedVersion,
+                internalQuotation: nextIq
+            };
+        });
+    };
+
+    const handleSelectMasterVersion = (val: string) => {
+        if (!val) return;
+        const match = val.match(/^(\d+|[a-zA-Z]+\d+)/);
+        const verCode = match ? match[1] : val.substring(0, 3).trim();
+        
+        // Update active version
+        handleSetActiveVersion(verCode);
+
+        // Add to versions list if not already present
+        const alreadyExists = versions.some(v => v.version === verCode);
+        if (!alreadyExists) {
+            setForm(p => ({
+                ...p,
+                quotationVersions: [...(p.quotationVersions || []), { version: verCode, description: val }]
+            }));
+        }
+    };
+
     const [lastCompany, setLastCompany] = useState(form.company);
 
     useEffect(() => {
         if (form.company !== lastCompany) {
             if (form.company) {
-                const nextIq = generateNextInternalQuotation(form.company, allTenders, form.date);
-                
-                // If there was an "extra" suffix (beyond the standard 4 parts: ID, YYYY, DD, MM)
-                // preserve it. Otherwise just use the newly generated one.
-                let extra = '';
-                if (form.internalQuotation) {
-                    const parts = form.internalQuotation.split('/');
-                    if (parts.length > 4) {
-                        extra = '/' + parts.slice(4).join('/');
-                    }
-                }
-                setForm(p => ({ ...p, internalQuotation: nextIq + extra }));
+                const nextIq = generateNextInternalQuotation(form.company, allTenders, form.date, form.quotationVersion || '01');
+                setForm(p => ({ ...p, internalQuotation: nextIq }));
             }
             setLastCompany(form.company);
         }
-    }, [form.company, lastCompany, allTenders, form.date]);
+    }, [form.company, lastCompany, allTenders, form.date, form.quotationVersion]);
 
     // Build unique history lists from existing tenders
     const hist = (field: keyof Tender) =>
@@ -481,23 +549,82 @@ function TenderDialog({ open, initial, allTenders, saving, onClose, onSave }: {
                     <Grid size={{ xs: 12 }}>
                         <SectionHeader icon={<CalendarMonthIcon sx={{ fontSize: 15 }} />} label="Reference & Date" />
                         <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 4 }}>
+                            <Grid size={{ xs: 12, sm: 3 }}>
                                 <TextField fullWidth size="small" label="Date" type="date" value={form.date}
                                     onChange={e => set('date')(e.target.value)}
                                     InputLabelProps={{ shrink: true }}
                                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
+                            <Grid size={{ xs: 12, sm: 3 }}>
                                 <FreeSoloInput label="Project Code / No" value={form.projectCode}
                                     onChange={set('projectCode')} history={hist('projectCode')} />
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 4 }}>
+                            <Grid size={{ xs: 12, sm: 3 }}>
                                 <FreeSoloInput label="Internal Quotation" value={form.internalQuotation}
                                     onChange={set('internalQuotation')} history={hist('internalQuotation')} />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 3 }}>
+                                <ChipAutocomplete label="Active Version" value={form.quotationVersion || ''}
+                                    onChange={handleSelectMasterVersion}
+                                    items={(data as any)?.quotationVersion || []} />
                             </Grid>
                             <Grid size={{ xs: 12 }}>
                                 <FreeSoloInput label="Project Title" value={form.projectTitle}
                                     onChange={set('projectTitle')} history={hist('projectTitle')} />
+                            </Grid>
+
+                            {/* ── Quotation Versions Manager ── */}
+                            <Grid size={{ xs: 12 }} sx={{ mt: 1.5 }}>
+                                <Box sx={{ p: 2, border: '1px dashed #e2e8f0', borderRadius: 3, bgcolor: '#f8fafc' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                        <Box>
+                                            <Typography variant="subtitle2" fontWeight={800} color="primary.main">
+                                                Quotation Revisions & Versions
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Add multiple quotation versions and click the ⭐ Star to set active version
+                                            </Typography>
+                                        </Box>
+                                        <Button size="small" variant="outlined" onClick={handleAddVersion} sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2 }}>
+                                            + Add Version
+                                        </Button>
+                                    </Box>
+
+                                    {versions.length === 0 ? (
+                                        <Typography variant="caption" color="text.disabled" sx={{ display: 'block', textAlign: 'center', py: 2 }}>
+                                            No custom versions added yet. Click "+ Add Version" to start!
+                                        </Typography>
+                                    ) : (
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                            {versions.map((ver, idx) => {
+                                                const isActive = (form.quotationVersion || '01') === ver.version;
+                                                return (
+                                                    <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, bgcolor: '#fff', borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                                                        <TextField size="small" label="Version" value={ver.version}
+                                                            onChange={e => handleUpdateVersion(idx, 'version', e.target.value)}
+                                                            sx={{ width: 90, '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
+                                                        
+                                                        <TextField size="small" fullWidth label="Quotation Details (Version notes/description)" value={ver.description}
+                                                            placeholder="e.g. Version 1: Original Budget Proposal, or Version 2: Revised Pricing after feedback"
+                                                            onChange={e => handleUpdateVersion(idx, 'description', e.target.value)}
+                                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }} />
+
+                                                        <Tooltip title={isActive ? "Active Version" : "Set as Active Version"}>
+                                                            <IconButton size="small" onClick={() => handleSetActiveVersion(ver.version)}
+                                                                sx={{ color: isActive ? '#f59e0b' : 'text.disabled' }}>
+                                                                {isActive ? <StarIcon /> : <StarBorderIcon />}
+                                                            </IconButton>
+                                                        </Tooltip>
+
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteVersion(idx)}>
+                                                            <DeleteIcon sx={{ fontSize: 18 }} />
+                                                        </IconButton>
+                                                    </Box>
+                                                );
+                                            })}
+                                        </Box>
+                                    )}
+                                </Box>
                             </Grid>
                         </Grid>
                     </Grid>
@@ -625,13 +752,19 @@ function fromApi(raw: any): Tender {
         creator:           raw.creator           ? { id: raw.creator.id, name: raw.creator.name } : undefined,
         creatorName:       raw.creator?.name     || '—',
         verification_status: raw.verification_status,
+        checked_at:        raw.checked_at,
         verified_at:       raw.verified_at,
         approved_at:       raw.approved_at,
         createdAt:         raw.created_at,
+        checker_signature: raw.checker_signature,
         verifier_signature: raw.verifier_signature,
         approver_signature: raw.approver_signature,
+        creator_signature: raw.creator_signature,
+        checker:           raw.checker ? { id: raw.checker.id, name: raw.checker.name } : undefined,
         verifier:          raw.verifier ? { id: raw.verifier.id, name: raw.verifier.name } : undefined,
         approver:          raw.approver ? { id: raw.approver.id, name: raw.approver.name } : undefined,
+        quotationVersion:   raw.quotation_version  ?? '01',
+        quotationVersions:  raw.quotation_versions ?? [],
     };
 }
 
@@ -660,6 +793,8 @@ function toApi(form: Omit<Tender, 'id'>) {
         project_folder_link: form.projectFolderLink || null,
         sourcing_link:      form.sourcingLink      || null,
         quotation_link:     form.quotationLink     || null,
+        quotation_version:   form.quotationVersion   || '01',
+        quotation_versions:  form.quotationVersions  || [],
     };
 }
 
@@ -704,13 +839,37 @@ export default function TendersPage() {
     const theme = useTheme();
     const isDark = theme.palette.mode === 'dark';
 
-    // Load tenders from API on mount
+    // Load and poll tenders from API
     useEffect(() => {
-        api.get('tenders')
-            .json<any[]>()
-            .then(data => setTenders(data.map(fromApi)))
-            .catch(console.error)
-            .finally(() => setLoading(false));
+        let active = true;
+
+        const fetchTenders = (isInitial = false) => {
+            if (isInitial) setLoading(true);
+            api.get('tenders')
+                .json<any[]>()
+                .then(data => {
+                    if (active) {
+                        setTenders(data.map(fromApi));
+                    }
+                })
+                .catch(console.error)
+                .finally(() => {
+                    if (isInitial && active) setLoading(false);
+                });
+        };
+
+        // Initial fetch
+        fetchTenders(true);
+
+        // Background polling every 4 seconds
+        const interval = setInterval(() => {
+            fetchTenders(false);
+        }, 4000);
+
+        return () => {
+            active = false;
+            clearInterval(interval);
+        };
     }, []);
 
     const handleSort = (id: string) => {
@@ -750,7 +909,7 @@ export default function TendersPage() {
         }
     };
 
-    const handleVerification = async (id: string, action: 'request-verification' | 'verify' | 'approve', signature?: string) => {
+    const handleVerification = async (id: string, action: 'request-verification' | 'check' | 'verify' | 'approve', signature?: string) => {
         try {
             const up = await api.post(`tenders/${id}/${action}`, { json: { signature } }).json<any>();
             setTenders(p => p.map(t => t.id === id ? { ...t, ...fromApi(up) } : t));
@@ -781,7 +940,8 @@ export default function TendersPage() {
             .filter(t => !q || Object.values(t).some(v => String(v).toLowerCase().includes(q)))
             .filter(t => {
                 if (!statusFilter) return true;
-                if (statusFilter === 'pending_verify_special') return t.verification_status === 'pending_supervisor';
+                if (statusFilter === 'pending_check_special') return t.verification_status === 'pending_supervisor';
+                if (statusFilter === 'pending_verify_special') return t.verification_status === 'pending_verify';
                 if (statusFilter === 'pending_approve_special') return t.verification_status === 'pending_superadmin';
                 return t.status && statusFilter && t.status.toLowerCase() === statusFilter.toLowerCase();
             })
@@ -813,18 +973,30 @@ export default function TendersPage() {
             return { sales, cost, gp, margin };
         };
 
-        const pendingVerify = tenders.filter(t => t.verification_status === 'pending_supervisor');
+        const pendingCheck = tenders.filter(t => t.verification_status === 'pending_supervisor');
+        const pendingVerify = tenders.filter(t => t.verification_status === 'pending_verify');
         const pendingApprove = tenders.filter(t => t.verification_status === 'pending_superadmin');
 
         const role = (currentUser as any)?.role;
         const userRoles = Array.isArray(role) ? role : [role];
-        const isSuperAdmin = userRoles.includes('superadmin');
-        const isSupervisor = userRoles.includes('supervisor');
-        const isAdmin = userRoles.includes('admin');
+        const isProjectManager = userRoles.includes('business_admin');
+        const isGeneralManager = userRoles.includes('business_higher_admin');
+        const isDirector = userRoles.includes('superadmin') || userRoles.includes('admin');
 
         const specialTabs = [];
         
-        if (pendingVerify.length > 0 && (isSupervisor || isSuperAdmin)) {
+        if (pendingCheck.length > 0 && (isProjectManager || isGeneralManager)) {
+            specialTabs.push({
+                label: 'Pending My Checking',
+                value: 'pending_check_special',
+                count: pendingCheck.length,
+                color: '#d97706',
+                totals: calcTotals(pendingCheck),
+                tenders: pendingCheck
+            });
+        }
+
+        if (pendingVerify.length > 0 && isGeneralManager) {
             specialTabs.push({
                 label: 'Pending My Verification',
                 value: 'pending_verify_special',
@@ -835,12 +1007,12 @@ export default function TendersPage() {
             });
         }
 
-        if (pendingApprove.length > 0 && (isSuperAdmin || isAdmin)) {
+        if (pendingApprove.length > 0 && isDirector) {
             specialTabs.push({
                 label: 'Pending My Approval',
                 value: 'pending_approve_special',
                 count: pendingApprove.length,
-                color: '#16a34a',
+                color: '#ef4444',
                 totals: calcTotals(pendingApprove),
                 tenders: pendingApprove
             });
@@ -984,15 +1156,15 @@ export default function TendersPage() {
                                     </Typography>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                         <Typography variant="body2" sx={{ color: '#e2e8f0', fontSize: 13 }}>Sales Price:</Typography>
-                                        <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', fontSize: 13 }}>RM {tab.totals.sales.toLocaleString()}</Typography>
+                                        <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', fontSize: 13 }}>RM {tab.totals.sales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                         <Typography variant="body2" sx={{ color: '#e2e8f0', fontSize: 13 }}>Cost Price:</Typography>
-                                        <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', fontSize: 13 }}>RM {tab.totals.cost.toLocaleString()}</Typography>
+                                        <Typography variant="body2" fontWeight={700} sx={{ color: '#fff', fontSize: 13 }}>RM {tab.totals.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                                         <Typography variant="body2" sx={{ color: '#e2e8f0', fontSize: 13 }}>Gross Profit:</Typography>
-                                        <Typography variant="body2" fontWeight={700} sx={{ color: tab.totals.gp >= 0 ? '#10b981' : '#ef4444', fontSize: 13 }}>RM {tab.totals.gp.toLocaleString()}</Typography>
+                                        <Typography variant="body2" fontWeight={700} sx={{ color: tab.totals.gp >= 0 ? '#10b981' : '#ef4444', fontSize: 13 }}>RM {tab.totals.gp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <Typography variant="body2" sx={{ color: '#e2e8f0', fontSize: 13 }}>Margin:</Typography>
@@ -1010,7 +1182,7 @@ export default function TendersPage() {
                                                         <Typography variant="body2" sx={{ color: '#cbd5e1', mr: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120, fontSize: 12 }} title={t.projectCode || t.internalQuotation || `ID: ${t.id}`}>
                                                             {t.projectCode || t.internalQuotation || `ID: ${t.id}`}
                                                         </Typography>
-                                                        <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: 12 }}>RM {Number(t.salesPrice || 0).toLocaleString()}</Typography>
+                                                        <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, fontSize: 12 }}>RM {Number(t.salesPrice || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Typography>
                                                     </Box>
                                                 ))}
                                             </Box>
@@ -1096,7 +1268,7 @@ export default function TendersPage() {
                                             <HeaderCell key={col.id} col={col} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
                                         ))}
                                         {/* Actions */}
-                                        <th style={{ minWidth: 140, width: 140,
+                                        <th style={{ minWidth: 160, width: 160,
                                             background: isDark ? '#1e293b' : '#f1f5f9',
                                             color: isDark ? '#94a3b8' : '#475569', 
                                             fontWeight: 700, fontSize: 11, height: 48,
@@ -1163,6 +1335,48 @@ export default function TendersPage() {
                                                 const showTooltip = ['customer', 'supplier', 'company', 'agencyTypes'].includes(col.id);
                                                 const isLongText = ['projectTitle', 'email', 'personInCharge'].includes(col.id);
                                                 
+                                                if (col.id === 'verification_status') {
+                                                    const role = (currentUser as any)?.role;
+                                                    const userRoles = Array.isArray(role) ? role : [role];
+                                                    const isProjectManager = userRoles.includes('business_admin');
+                                                    const isGeneralManager = userRoles.includes('business_higher_admin');
+                                                    const isDirector = userRoles.includes('superadmin') || userRoles.includes('admin');
+                                                    const vStatus = tender.verification_status;
+                                                    
+                                                    return (
+                                                        <td key={col.id} style={{
+                                                            padding: '12px 16px', fontSize: 11,
+                                                            color: theme.palette.text.primary, borderBottom: `1px solid ${theme.palette.divider}`,
+                                                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                                                            maxWidth: col.width,
+                                                        }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                {vStatus === 'approved' && (
+                                                                    <Chip size="small" label="Approved" color="error" variant="outlined" sx={{ height: 24, fontSize: 10, fontWeight: 700, borderRadius: 2, background: alpha('#ef4444', 0.05) }} />
+                                                                )}
+                                                                {vStatus === 'pending_supervisor' && (
+                                                                    <Chip size="small" label="Pending Check" color="warning" variant="outlined" sx={{ height: 24, fontSize: 10, fontWeight: 700, borderRadius: 2, background: alpha('#f59e0b', 0.05) }} />
+                                                                )}
+                                                                {vStatus === 'pending_verify' && (
+                                                                    <Chip size="small" label="Pending Verify" color="secondary" variant="outlined" sx={{ height: 24, fontSize: 10, fontWeight: 700, borderRadius: 2, background: alpha('#9061f9', 0.05) }} />
+                                                                )}
+                                                                {vStatus === 'pending_superadmin' && (
+                                                                    <Chip size="small" label="Pending Approval" color="error" variant="outlined" sx={{ height: 24, fontSize: 10, fontWeight: 700, borderRadius: 2, background: alpha('#ef4444', 0.05) }} />
+                                                                )}
+                                                                {(!vStatus || vStatus === 'draft') && (
+                                                                    (!isProjectManager && !isGeneralManager && !isDirector) ? (
+                                                                        <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(tender.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0.25, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap', fontWeight: 700 }}>
+                                                                            Request Checking
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Chip size="small" label="Draft" variant="outlined" sx={{ height: 24, fontSize: 10, fontWeight: 600, color: 'text.secondary', borderColor: 'divider', borderRadius: 2 }} />
+                                                                    )
+                                                                )}
+                                                            </Box>
+                                                        </td>
+                                                    );
+                                                }
+                                                
                                                 return (
                                                     <td key={col.id} style={{
                                                         padding: '12px 16px', fontSize: 11,
@@ -1191,7 +1405,7 @@ export default function TendersPage() {
                                                 );
                                             })}
                                             <td style={{ 
-                                                padding: '12px 16px', borderBottom: `1px solid ${theme.palette.divider}`, textAlign: 'center',
+                                                padding: '8px 12px', borderBottom: `1px solid ${theme.palette.divider}`, textAlign: 'center',
                                                 position: 'sticky', right: 0, background: idx % 2 === 0 ? theme.palette.background.paper : (isDark ? '#1e293b' : '#f8fafc'), 
                                                 zIndex: 2, borderLeft: `1px solid ${theme.palette.divider}`,
                                                 transition: 'background-color 0.15s ease'
@@ -1199,78 +1413,98 @@ export default function TendersPage() {
                                                 {(() => {
                                                     const role = (currentUser as any)?.role;
                                                     const userRoles = Array.isArray(role) ? role : [role];
-                                                    const isSupervisor = userRoles.includes('business_admin');
-                                                    const isSuperAdmin = userRoles.includes('business_higher_admin');
-                                                    const isAdmin = userRoles.includes('business_higher_admin');
+                                                    const isProjectManager = userRoles.includes('business_admin');
+                                                    const isGeneralManager = userRoles.includes('business_higher_admin');
+                                                    const isDirector = userRoles.includes('superadmin') || userRoles.includes('admin');
                                                     
                                                     const isCreator = !tender.creator || 
                                                         (currentUser && tender.creator.id == (currentUser as any).id) || 
-                                                        isAdmin;
+                                                        isDirector;
                                                     
                                                     const vStatus = tender.verification_status;
                                                     
                                                     return (
-                                                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
-                                                            {(!vStatus || vStatus === 'draft') && !isSupervisor && !isSuperAdmin && !isAdmin && (
-                                                                <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(tender.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 10, py: 0, px: 1, minWidth: 'max-content', height: 24, whiteSpace: 'nowrap' }}>
-                                                                    Request Verification
-                                                                </Button>
-                                                            )}
-                                                            <Tooltip title="View Costing Report">
-                                                                <IconButton size="small" onClick={() => handleOpenReport(tender)} sx={{
-                                                                    color: '#6366f1',
-                                                                    bgcolor: alpha('#6366f1', 0.08),
-                                                                    '&:hover': { bgcolor: alpha('#6366f1', 0.15) },
-                                                                    width: 28, height: 28, borderRadius: 1.5
-                                                                }}>
-                                                                    <AssessmentIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            {vStatus === 'approved' && (
-                                                                <Chip size="small" label="Approved" color="success" variant="outlined" sx={{ height: 20, fontSize: 10 }} />
-                                                            )}
-                                                            <Tooltip title="Tender Costing">
-                                                                <IconButton size="small" onClick={() => navigate(`/businesses/tenders/${tender.id}/costing`)} sx={{
-                                                                    color: '#10b981',
-                                                                    bgcolor: alpha('#10b981', 0.08),
-                                                                    '&:hover': { bgcolor: alpha('#10b981', 0.15) },
-                                                                    width: 28, height: 28, borderRadius: 1.5
-                                                                }}>
-                                                                    <AttachMoneyIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            {isCreator ? (
-                                                                <>
-                                                                    <Tooltip title="Edit Tender">
-                                                                        <IconButton size="small" onClick={() => openEdit(tender)} sx={{
-                                                                            color: '#2563eb',
-                                                                            bgcolor: alpha('#2563eb', 0.08),
-                                                                            '&:hover': { bgcolor: alpha('#2563eb', 0.15) },
-                                                                            width: 28, height: 28, borderRadius: 1.5
-                                                                        }}>
-                                                                            <EditIcon sx={{ fontSize: 15 }} />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                    <Tooltip title="Delete Tender">
-                                                                        <IconButton size="small" onClick={() => handleDelete(tender.id)} sx={{
-                                                                            color: '#ef4444',
-                                                                            bgcolor: alpha('#ef4444', 0.08),
-                                                                            '&:hover': { bgcolor: alpha('#ef4444', 0.15) },
-                                                                            width: 28, height: 28, borderRadius: 1.5
-                                                                        }}>
-                                                                            <DeleteIcon sx={{ fontSize: 15 }} />
-                                                                        </IconButton>
-                                                                    </Tooltip>
-                                                                </>
-                                                            ) : (
-                                                                <Tooltip title="View Only (Created by another user)">
-                                                                    <span>
-                                                                        <IconButton size="small" disabled sx={{ opacity: 0.3, width: 28, height: 28 }}>
-                                                                            <EditIcon sx={{ fontSize: 15 }} />
-                                                                        </IconButton>
-                                                                    </span>
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, justifyContent: 'center', alignItems: 'center' }}>
+                                                            {/* Row 1: Actions Icons */}
+                                                            <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', alignItems: 'center' }}>
+                                                                <Tooltip title="View Costing Report">
+                                                                     <IconButton size="small" onClick={() => handleOpenReport(tender)} sx={{
+                                                                         color: '#6366f1',
+                                                                         bgcolor: alpha('#6366f1', 0.08),
+                                                                         '&:hover': { bgcolor: alpha('#6366f1', 0.15) },
+                                                                         width: 28, height: 28, borderRadius: 1.5
+                                                                     }}>
+                                                                         <AssessmentIcon sx={{ fontSize: 16 }} />
+                                                                     </IconButton>
                                                                 </Tooltip>
-                                                            )}
+                                                                <Tooltip title="Tender Costing">
+                                                                    <IconButton size="small" onClick={() => navigate(`/businesses/tenders/${tender.id}/costing`)} sx={{
+                                                                        color: '#10b981',
+                                                                        bgcolor: alpha('#10b981', 0.08),
+                                                                        '&:hover': { bgcolor: alpha('#10b981', 0.15) },
+                                                                        width: 28, height: 28, borderRadius: 1.5
+                                                                    }}>
+                                                                        <AttachMoneyIcon sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                                {isCreator ? (
+                                                                    <>
+                                                                        <Tooltip title="Edit Tender">
+                                                                            <IconButton size="small" onClick={() => openEdit(tender)} sx={{
+                                                                                color: '#2563eb',
+                                                                                bgcolor: alpha('#2563eb', 0.08),
+                                                                                '&:hover': { bgcolor: alpha('#2563eb', 0.15) },
+                                                                                width: 28, height: 28, borderRadius: 1.5
+                                                                            }}>
+                                                                                <EditIcon sx={{ fontSize: 15 }} />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                        <Tooltip title="Delete Tender">
+                                                                            <IconButton size="small" onClick={() => handleDelete(tender.id)} sx={{
+                                                                                color: '#ef4444',
+                                                                                bgcolor: alpha('#ef4444', 0.08),
+                                                                                '&:hover': { bgcolor: alpha('#ef4444', 0.15) },
+                                                                                width: 28, height: 28, borderRadius: 1.5
+                                                                            }}>
+                                                                                <DeleteIcon sx={{ fontSize: 15 }} />
+                                                                            </IconButton>
+                                                                        </Tooltip>
+                                                                    </>
+                                                                ) : (
+                                                                    <Tooltip title="View Only (Created by another user)">
+                                                                        <span>
+                                                                            <IconButton size="small" disabled sx={{ opacity: 0.3, width: 28, height: 28 }}>
+                                                                                <EditIcon sx={{ fontSize: 15 }} />
+                                                                            </IconButton>
+                                                                        </span>
+                                                                    </Tooltip>
+                                                                )}
+                                                            </Box>
+
+                                                            {/* Row 2: Verification Status Chip / Request Verification Button */}
+                                                            <Box sx={{ minHeight: 24, display: 'flex', alignItems: 'center' }}>
+                                                                {vStatus === 'approved' && (
+                                                                    <Chip size="small" label="Approved" color="error" variant="outlined" sx={{ height: 20, fontSize: 9, fontWeight: 700, borderRadius: 1.5, background: alpha('#ef4444', 0.05) }} />
+                                                                )}
+                                                                {vStatus === 'pending_supervisor' && (
+                                                                    <Chip size="small" label="Pending Check" color="warning" variant="outlined" sx={{ height: 20, fontSize: 9, fontWeight: 700, borderRadius: 1.5, background: alpha('#f59e0b', 0.05) }} />
+                                                                )}
+                                                                {vStatus === 'pending_verify' && (
+                                                                    <Chip size="small" label="Pending Verify" color="secondary" variant="outlined" sx={{ height: 20, fontSize: 9, fontWeight: 700, borderRadius: 1.5, background: alpha('#9061f9', 0.05) }} />
+                                                                )}
+                                                                {vStatus === 'pending_superadmin' && (
+                                                                    <Chip size="small" label="Pending Approval" color="error" variant="outlined" sx={{ height: 20, fontSize: 9, fontWeight: 700, borderRadius: 1.5, background: alpha('#ef4444', 0.05) }} />
+                                                                )}
+                                                                {(!vStatus || vStatus === 'draft') && (
+                                                                    (!isProjectManager && !isGeneralManager && !isDirector) ? (
+                                                                        <Button size="small" variant="outlined" color="warning" onClick={() => handleVerification(tender.id, 'request-verification')} sx={{ textTransform: 'none', borderRadius: 1.5, fontSize: 9, py: 0, px: 1, minWidth: 'max-content', height: 20, whiteSpace: 'nowrap', fontWeight: 700 }}>
+                                                                            Request Checking
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Chip size="small" label="Draft" variant="outlined" sx={{ height: 20, fontSize: 9, fontWeight: 600, color: 'text.secondary', borderColor: 'divider', borderRadius: 1.5 }} />
+                                                                    )
+                                                                )}
+                                                            </Box>
                                                         </Box>
                                                     );
                                                 })()}
@@ -1323,6 +1557,18 @@ export default function TendersPage() {
                 tender={reportTender}
                 items={reportItems}
                 currentUser={currentUser}
+                onRequestChecking={(signature) => {
+                    if (reportTender) {
+                        handleVerification(reportTender.id, 'request-verification', signature);
+                        setReportOpen(false);
+                    }
+                }}
+                onCheck={(signature) => {
+                    if (reportTender) {
+                        handleVerification(reportTender.id, 'check', signature);
+                        setReportOpen(false);
+                    }
+                }}
                 onVerify={(signature) => {
                     if (reportTender) {
                         handleVerification(reportTender.id, 'verify', signature);
