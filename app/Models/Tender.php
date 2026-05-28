@@ -17,7 +17,9 @@ class Tender extends Model
         'project_progress_files', 'project_folder_files',
         'sourcing_files', 'quotation_files',
         'verified_by', 'verified_at', 'approved_by', 'approved_at',
-        'verifier_signature', 'approver_signature'
+        'verifier_signature', 'approver_signature', 'custom_documents',
+        'checked_by', 'checked_at', 'checker_signature', 'creator_signature',
+        'quotation_version', 'quotation_versions'
     ];
 
     protected $casts = [
@@ -31,11 +33,18 @@ class Tender extends Model
         'project_folder_files'   => 'array',
         'sourcing_files'         => 'array',
         'quotation_files'        => 'array',
+        'custom_documents'       => 'array',
+        'quotation_versions'     => 'array',
     ];
 
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function checker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checked_by');
     }
 
     public function verifier(): BelongsTo

@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 
 class MasterListController extends Controller
 {
-    private const VALID_CATEGORIES = ['status', 'type', 'agencyTypes', 'company', 'customer', 'supplier'];
+    private const VALID_CATEGORIES = ['status', 'type', 'agencyTypes', 'company', 'customer', 'supplier', 'project_document_title', 'quotationVersion'];
 
     /** GET /master-list  — returns all items grouped by category */
     public function index(): JsonResponse
@@ -37,6 +37,9 @@ class MasterListController extends Controller
             'contact3'   => ['nullable', 'string', 'max:50'],
             'items_supplied' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer'],
+            'pic_name'   => ['nullable', 'string', 'max:255'],
+            'pic_phone'  => ['nullable', 'string', 'max:50'],
+            'pic_email'  => ['nullable', 'email', 'max:255'],
         ]);
 
         $item = MasterListItem::create($data);
@@ -58,6 +61,9 @@ class MasterListController extends Controller
             'contact3'   => ['nullable', 'string', 'max:50'],
             'items_supplied' => ['nullable', 'string'],
             'sort_order' => ['nullable', 'integer'],
+            'pic_name'   => ['nullable', 'string', 'max:255'],
+            'pic_phone'  => ['nullable', 'string', 'max:50'],
+            'pic_email'  => ['nullable', 'email', 'max:255'],
         ]);
 
         $item->update($data);
@@ -147,6 +153,11 @@ class MasterListController extends Controller
             ],
             'supplier' => [
                 ['label' => 'Example Supplier', 'items_supplied' => 'Cables, Connectors', 'color' => '#0d9488', 'text_color' => '#fff'],
+            ],
+            'quotationVersion' => [
+                ['label' => '01 - Original Proposal', 'color' => '#3b82f6', 'text_color' => '#fff'],
+                ['label' => '02 - Revised Pricing', 'color' => '#22c55e', 'text_color' => '#fff'],
+                ['label' => '03 - Final Negotiations', 'color' => '#ef4444', 'text_color' => '#fff'],
             ],
         ];
     }

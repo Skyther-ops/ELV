@@ -9,6 +9,7 @@ class MasterListItem extends Model
     protected $fillable = [
         'category', 'label', 'color', 'text_color',
         'email', 'contact1', 'contact2', 'contact3', 'items_supplied', 'sort_order',
+        'pic_name', 'pic_phone', 'pic_email',
     ];
 
     protected $casts = [

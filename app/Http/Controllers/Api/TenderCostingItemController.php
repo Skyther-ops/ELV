@@ -19,11 +19,15 @@ class TenderCostingItemController extends Controller
     public function store(Request $request, int $tenderId): JsonResponse
     {
         $data = $request->validate([
-            'item_name'  => 'required|string|max:500',
+            'item_name'  => 'required|string',
+            'details'    => 'nullable|string',
+            'quotation_breakdown' => 'nullable|string',
             'supplier'   => 'nullable|string|max:255',
             'quantity'   => 'required|numeric|min:0',
             'unit_cost'  => 'required|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
+            'has_sst'    => 'nullable|boolean',
+            'has_costing_sst' => 'nullable|boolean',
         ]);
 
         $data['tender_id'] = $tenderId;
@@ -39,11 +43,15 @@ class TenderCostingItemController extends Controller
         $item = TenderCostingItem::where('tender_id', $tenderId)->findOrFail($id);
 
         $data = $request->validate([
-            'item_name'  => 'required|string|max:500',
+            'item_name'  => 'required|string',
+            'details'    => 'nullable|string',
+            'quotation_breakdown' => 'nullable|string',
             'supplier'   => 'nullable|string|max:255',
             'quantity'   => 'required|numeric|min:0',
             'unit_cost'  => 'required|numeric|min:0',
             'unit_price' => 'required|numeric|min:0',
+            'has_sst'    => 'nullable|boolean',
+            'has_costing_sst' => 'nullable|boolean',
         ]);
 
         $item->update($data);

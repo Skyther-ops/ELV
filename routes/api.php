@@ -75,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tenders/{id}/upload-files', [\App\Http\Controllers\Api\TenderController::class, 'uploadFiles']);
     Route::delete('/tenders/{id}/files', [\App\Http\Controllers\Api\TenderController::class, 'deleteFile']);
     Route::post('/tenders/{id}/request-verification', [\App\Http\Controllers\Api\TenderController::class, 'requestVerification']);
+    Route::post('/tenders/{id}/check', [\App\Http\Controllers\Api\TenderController::class, 'check']);
     Route::post('/tenders/{id}/verify', [\App\Http\Controllers\Api\TenderController::class, 'verify']);
     Route::post('/tenders/{id}/approve', [\App\Http\Controllers\Api\TenderController::class, 'approve']);
 
@@ -89,6 +90,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/master-list/{id}', [\App\Http\Controllers\Api\MasterListController::class, 'update']);
     Route::delete('/master-list/{id}', [\App\Http\Controllers\Api\MasterListController::class, 'destroy']);
     Route::post('/master-list/seed', [\App\Http\Controllers\Api\MasterListController::class, 'seed']);
+
+    // ── Business Module: System Configurations ──────────────────────
+    Route::get('/system-configs', [\App\Http\Controllers\Api\SystemConfigController::class, 'index']);
+    Route::post('/system-configs', [\App\Http\Controllers\Api\SystemConfigController::class, 'store']);
 
     // ── Business Module: License Tracking ─────────────────────────────
     Route::get('/licenses', [\App\Http\Controllers\Api\LicenseController::class, 'index']);
